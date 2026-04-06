@@ -69,8 +69,8 @@ supabase/
 ### 1. Cloner le depot
 
 ```bash
-git clone https://github.com/VOTRE_USER/economie-glm5.git
-cd economie-glm5
+git clone https://github.com/abdoulaye87/samaprojet.git
+cd samaprojet
 ```
 
 ### 2. Installer les dependances
@@ -122,7 +122,7 @@ git init
 git add .
 git commit -m "Initial commit - Simulation economique GLM5"
 git branch -M main
-git remote add origin https://github.com/VOTRE_USER/economie-glm5.git
+git remote add origin https://github.com/abdoulaye87/samaprojet.git
 git push -u origin main
 ```
 
