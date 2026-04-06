@@ -1,0 +1,37 @@
+-- ============================================================
+-- SAMA ÉCONOMIE — NETTOYAGE COMPLET
+-- À exécuter EN PREMIER dans Supabase SQL Editor
+-- ============================================================
+
+DROP TRIGGER IF EXISTS on_auth_user_created ON auth.users;
+DROP FUNCTION IF EXISTS public.handle_new_user();
+
+DROP TABLE IF EXISTS "FeedComment" CASCADE;
+DROP TABLE IF EXISTS "FeedLike" CASCADE;
+DROP TABLE IF EXISTS "Review" CASCADE;
+DROP TABLE IF EXISTS "Challenge" CASCADE;
+DROP TABLE IF EXISTS "P2PLoan" CASCADE;
+DROP TABLE IF EXISTS "ProfileView" CASCADE;
+DROP TABLE IF EXISTS "Notification" CASCADE;
+DROP TABLE IF EXISTS "Proposal" CASCADE;
+DROP TABLE IF EXISTS "Order" CASCADE;
+DROP TABLE IF EXISTS "Demand" CASCADE;
+DROP TABLE IF EXISTS "Service" CASCADE;
+DROP TABLE IF EXISTS "Product" CASCADE;
+DROP TABLE IF EXISTS "Shop" CASCADE;
+DROP TABLE IF EXISTS "Transaction" CASCADE;
+DROP TABLE IF EXISTS "MarketPrice" CASCADE;
+DROP TABLE IF EXISTS "Asset" CASCADE;
+DROP TABLE IF EXISTS "GameEvent" CASCADE;
+DROP TABLE IF EXISTS "ProjectExpense" CASCADE;
+DROP TABLE IF EXISTS "Project" CASCADE;
+DROP TABLE IF EXISTS "Loan" CASCADE;
+DROP TABLE IF EXISTS "GameSettings" CASCADE;
+DROP TABLE IF EXISTS "User" CASCADE;
+DROP TABLE IF EXISTS "Business" CASCADE;
+DROP TABLE IF EXISTS "agents" CASCADE;
+DROP TABLE IF EXISTS "loans" CASCADE;
+DROP TABLE IF EXISTS "transactions" CASCADE;
+DROP TABLE IF EXISTS "posts" CASCADE;
+
+SELECT 'Toutes les tables ont été supprimées avec succès !' AS result;
