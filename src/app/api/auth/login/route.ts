@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { supabaseAuth, supabaseAdmin } from '@/lib/supabase-server'
+import { supabase } from '@/lib/supabase-server'
+import { db } from '@/lib/db'
 
 export async function POST(req: NextRequest) {
   try {
@@ -12,8 +13,8 @@ export async function POST(req: NextRequest) {
       )
     }
 
-    // Use ANON client for user auth (not service role)
-    const { data, error } = await supabaseAuth.auth.signInWithPassword({
+    // Se connecter avec email/mot de passe
+    const { data, error } = await supabase.auth.signInWithPassword({
       email,
       password,
     })
@@ -25,8 +26,14 @@ export async function POST(req: NextRequest) {
       )
     }
 
-    // Get user profile from Prisma (with admin client)
-    const { db } = await import('@/lib/db')
+    if (!data.session || !data.user) {
+      return NextResponse.json(
+        { error: 'Connexion échouée: session non retournée par Supabase' },
+        { status: 500 }
+      )
+    }
+
+    // Récupérer ou créer le profil Prisma
     let user = await db.user.findUnique({
       where: { id: data.user.id },
     })
@@ -45,8 +52,12 @@ export async function POST(req: NextRequest) {
     }
 
     return NextResponse.json({
-      message: 'Connexion réussie',
-      session: data.session,
+      success: true,
+      session: {
+        access_token: data.session.access_token,
+        refresh_token: data.session.refresh_token,
+        expires_in: data.session.expires_in,
+      },
       user: {
         id: user.id,
         email: user.email,

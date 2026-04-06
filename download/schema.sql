@@ -88,27 +88,10 @@ INSERT INTO "Business" (id, "ownerId", name, revenue, cost) VALUES
 ON CONFLICT (id) DO NOTHING;
 
 -- ============================================================
--- Enable Row Level Security (RLS)
+-- Row Level Security: DÉSACTIVÉ
+-- Prisma se connecte via DATABASE_URL sans contexte auth.uid()
+-- L'authentification est gérée par les API routes (vérification token Supabase)
 -- ============================================================
-ALTER TABLE "User" ENABLE ROW LEVEL SECURITY;
-ALTER TABLE "Business" ENABLE ROW LEVEL SECURITY;
-ALTER TABLE "Transaction" ENABLE ROW LEVEL SECURITY;
-
--- Users: anyone authenticated can read all users
-CREATE POLICY "Users readable by authenticated users" ON "User"
-  FOR SELECT USING (auth.uid() IS NOT NULL);
-
--- Users: authenticated users can update their own profile
-CREATE POLICY "Users can update own profile" ON "User"
-  FOR UPDATE USING (auth.uid()::text = id::text);
-
--- Businesses: anyone authenticated can read all businesses
-CREATE POLICY "Businesses readable by authenticated users" ON "Business"
-  FOR SELECT USING (auth.uid() IS NOT NULL);
-
--- Transactions: anyone authenticated can read all transactions
-CREATE POLICY "Transactions readable by authenticated users" ON "Transaction"
-  FOR SELECT USING (auth.uid() IS NOT NULL);
-
--- Note: For admin operations (create agent, create business, transfer, etc.),
--- we use the service_role key on the server side which bypasses RLS.
+ALTER TABLE "User" DISABLE ROW LEVEL SECURITY;
+ALTER TABLE "Business" DISABLE ROW LEVEL SECURITY;
+ALTER TABLE "Transaction" DISABLE ROW LEVEL SECURITY;

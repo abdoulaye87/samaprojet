@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { supabaseAuth } from '@/lib/supabase-server'
+import { supabase } from '@/lib/supabase-server'
 import { db } from '@/lib/db'
 
 export async function POST(req: NextRequest) {
@@ -20,12 +20,15 @@ export async function POST(req: NextRequest) {
       )
     }
 
-    // Use ANON client for user auth (not service role)
-    const { data: authData, error: authError } = await supabaseAuth.auth.signUp({
+    // Inscrire via Supabase Auth
+    const { data: authData, error: authError } = await supabase.auth.signUp({
       email,
       password,
       options: {
         data: { name },
+        // Permet d'obtenir la session immédiatement
+        // (fonctionne si la confirmation email est désactivée dans Supabase)
+        emailRedirectTo: undefined,
       },
     })
 
@@ -36,32 +39,54 @@ export async function POST(req: NextRequest) {
       )
     }
 
-    // Create user in Prisma (in case trigger doesn't fire)
-    if (authData.user) {
-      await db.user.upsert({
-        where: { id: authData.user.id },
-        create: {
-          id: authData.user.id,
-          name,
-          email,
-          cash: 5000,
-          type: 'player',
+    if (!authData.user) {
+      return NextResponse.json(
+        { error: 'Inscription échouée: utilisateur non créé' },
+        { status: 500 }
+      )
+    }
+
+    // Créer le profil Prisma
+    await db.user.upsert({
+      where: { id: authData.user.id },
+      create: {
+        id: authData.user.id,
+        name,
+        email,
+        cash: 5000,
+        type: 'player',
+      },
+      update: { name, email },
+    })
+
+    // Si session disponible = confirmation email désactivée → connexion auto
+    if (authData.session) {
+      return NextResponse.json({
+        success: true,
+        session: {
+          access_token: authData.session.access_token,
+          refresh_token: authData.session.refresh_token,
+          expires_in: authData.session.expires_in,
         },
-        update: {
+        user: {
+          id: authData.user.id,
+          email: authData.user.email,
           name,
-          email,
+          type: 'player',
         },
       })
     }
 
+    // Sinon = confirmation email activée → dire à l'utilisateur de se connecter
     return NextResponse.json({
-      message: 'Inscription réussie',
+      success: true,
+      needConfirmation: true,
+      message: 'Compte créé ! Vérifiez votre email puis connectez-vous.',
       user: {
-        id: authData.user?.id,
-        email: authData.user?.email,
+        id: authData.user.id,
+        email: authData.user.email,
         name,
       },
-      session: authData.session,
     })
   } catch (error) {
     console.error('Register error:', error)

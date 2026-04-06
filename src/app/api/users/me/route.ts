@@ -1,24 +1,29 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { supabaseAdmin } from '@/lib/supabase-server'
+import { supabase } from '@/lib/supabase-server'
 import { db } from '@/lib/db'
 
 export async function GET(req: NextRequest) {
   try {
     const authHeader = req.headers.get('Authorization')
-    if (!authHeader) {
-      return NextResponse.json({ error: 'Non autorisé' }, { status: 401 })
+    if (!authHeader || !authHeader.startsWith('Bearer ')) {
+      return NextResponse.json({ error: 'Non autorisé: token manquant' }, { status: 401 })
     }
 
     const token = authHeader.replace('Bearer ', '')
 
-    // Use ADMIN client to verify token
-    const { data, error } = await supabaseAdmin.auth.getUser(token)
+    // Vérifier le token avec Supabase
+    const { data, error } = await supabase.auth.getUser(token)
 
-    if (error || !data.user) {
-      return NextResponse.json({ error: 'Token invalide' }, { status: 401 })
+    if (error) {
+      console.error('Token verification error:', error.message)
+      return NextResponse.json({ error: 'Token invalide: ' + error.message }, { status: 401 })
     }
 
-    // Get or create user in Prisma
+    if (!data.user) {
+      return NextResponse.json({ error: 'Utilisateur non trouvé via token' }, { status: 401 })
+    }
+
+    // Récupérer le profil Prisma
     let profile = await db.user.findUnique({
       where: { id: data.user.id },
       include: {
@@ -60,13 +65,12 @@ export async function GET(req: NextRequest) {
       })
     }
 
-    // Merge sent and received transactions, sort by date
+    // Fusionner et dédupliquer les transactions
     const allTransactions = [
       ...profile.businessesSent,
       ...profile.businessesReceived,
     ].sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime())
 
-    // Deduplicate by id
     const seen = new Set<string>()
     const uniqueTransactions = allTransactions.filter(tx => {
       if (seen.has(tx.id)) return false

@@ -7,7 +7,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { Activity, LogIn, UserPlus } from 'lucide-react';
+import { Activity, LogIn, UserPlus, AlertCircle } from 'lucide-react';
 
 interface AuthPageProps {
   onLogin: (user: { id: string; name: string; email: string; type: string; accessToken: string }) => void;
@@ -20,6 +20,7 @@ export function AuthPage({ onLogin }: AuthPageProps) {
   const [registerEmail, setRegisterEmail] = useState('');
   const [registerPassword, setRegisterPassword] = useState('');
   const [loading, setLoading] = useState(false);
+  const [debugInfo, setDebugInfo] = useState<string | null>(null);
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -28,6 +29,7 @@ export function AuthPage({ onLogin }: AuthPageProps) {
       return;
     }
     setLoading(true);
+    setDebugInfo(null);
     try {
       const res = await fetch('/api/auth/login', {
         method: 'POST',
@@ -35,26 +37,33 @@ export function AuthPage({ onLogin }: AuthPageProps) {
         body: JSON.stringify({ email: loginEmail, password: loginPassword }),
       });
       const data = await res.json();
+
       if (!res.ok) {
-        toast.error(data.error || 'Erreur de connexion');
+        const errorMsg = data.error || 'Erreur de connexion';
+        setDebugInfo(`Erreur ${res.status}: ${errorMsg}`);
+        toast.error(errorMsg);
         return;
       }
+
       const accessToken = data.session?.access_token;
-      if (accessToken) {
+      if (accessToken && data.user) {
         localStorage.setItem('access_token', accessToken);
         onLogin({
           id: data.user.id,
           name: data.user.name,
-          email: data.user.email,
-          type: 'player',
+          email: data.user.email || '',
+          type: data.user.type || 'player',
           accessToken,
         });
         toast.success('Connexion réussie !');
       } else {
-        toast.error('Erreur: token de session manquant');
+        setDebugInfo('Pas de session retournée. Détails: ' + JSON.stringify(data).substring(0, 200));
+        toast.error('Session non retournée par le serveur');
       }
-    } catch {
-      toast.error('Erreur réseau');
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : 'Erreur réseau';
+      setDebugInfo(`Erreur catch: ${msg}`);
+      toast.error(msg);
     } finally {
       setLoading(false);
     }
@@ -71,6 +80,7 @@ export function AuthPage({ onLogin }: AuthPageProps) {
       return;
     }
     setLoading(true);
+    setDebugInfo(null);
     try {
       const res = await fetch('/api/auth/register', {
         method: 'POST',
@@ -82,26 +92,35 @@ export function AuthPage({ onLogin }: AuthPageProps) {
         }),
       });
       const data = await res.json();
+
       if (!res.ok) {
-        toast.error(data.error || "Erreur d'inscription");
+        const errorMsg = data.error || "Erreur d'inscription";
+        setDebugInfo(`Erreur ${res.status}: ${errorMsg}`);
+        toast.error(errorMsg);
         return;
       }
-      const accessToken = data.session?.access_token;
-      if (accessToken) {
-        localStorage.setItem('access_token', accessToken);
+
+      if (data.needConfirmation) {
+        setDebugInfo('Confirmation email requise. Passez à la connexion.');
+        toast.success('Compte créé ! Connectez-vous maintenant.');
+      } else if (data.session?.access_token && data.user) {
+        localStorage.setItem('access_token', data.session.access_token);
         onLogin({
           id: data.user.id,
           name: data.user.name,
-          email: data.user.email,
-          type: 'player',
-          accessToken,
+          email: data.user.email || '',
+          type: data.user.type || 'player',
+          accessToken: data.session.access_token,
         });
         toast.success('Inscription réussie !');
       } else {
-        toast.success('Compte créé ! Connectez-vous maintenant.');
+        setDebugInfo('Pas de session auto. Passez à la connexion.');
+        toast.success('Compte créé ! Connectez-vous.');
       }
-    } catch {
-      toast.error('Erreur réseau');
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : 'Erreur réseau';
+      setDebugInfo(`Erreur catch: ${msg}`);
+      toast.error(msg);
     } finally {
       setLoading(false);
     }
@@ -213,6 +232,14 @@ export function AuthPage({ onLogin }: AuthPageProps) {
             </Tabs>
           </CardHeader>
         </Card>
+
+        {/* Debug info */}
+        {debugInfo && (
+          <div className="mt-4 p-3 rounded-lg bg-amber-50 border border-amber-200 text-xs text-amber-800 flex items-start gap-2">
+            <AlertCircle className="size-4 shrink-0 mt-0.5" />
+            <span>{debugInfo}</span>
+          </div>
+        )}
       </div>
     </div>
   );
