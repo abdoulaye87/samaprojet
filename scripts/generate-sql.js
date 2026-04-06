@@ -1,110 +1,36 @@
-// Génère le SQL complet (schéma V2 + 300 agents) pour copier-coller dans Supabase SQL Editor
+// Génère 2 fichiers SQL séparés : Partie 1 (Schema) et Partie 2 (Données 300 agents)
 const fs = require('fs');
 const path = require('path');
 const { v4: uuidv4 } = require('uuid');
 
-// ============================================================
-// UTILITAIRES
-// ============================================================
 function rand(min, max) { return Math.floor(Math.random() * (max - min + 1)) + min; }
 function randFloat(min, max) { return (Math.random() * (max - min) + min).toFixed(2); }
 function pick(arr) { return arr[rand(0, arr.length - 1)]; }
-function pickN(arr, n) {
-  const copy = [...arr];
-  const result = [];
-  n = Math.min(n, copy.length);
-  for (let i = 0; i < n; i++) { const idx = rand(0, copy.length - 1); result.push(copy.splice(idx, 1)[0]); }
-  return result;
-}
+function pickN(arr, n) { const c=[...arr];const r=[];n=Math.min(n,c.length);for(let i=0;i<n;i++){const x=rand(0,c.length-1);r.push(c.splice(x,1)[0])}return r; }
 function esc(s) { return s ? s.replace(/'/g, "''") : ''; }
 
-// ============================================================
-// DONNÉES SÉNÉGALAISES
-// ============================================================
-const FIRST_NAMES_M = ['Abdoulaye','Moussa','Ibrahima','Ousmane','Mamadou','Pape','Cheikh','Mbaye','Seydou','Boubacar','Amadou','Idrissa','Birame','Mouhamadou','El Hadj','Serigne','Modou','Lamine','Daouda','Yaya','Souleymane','Aliou','Babacar','Thierno','Oumar','Falilou','Samba','Moustapha','Djibril','Mansour','Bouna','Salif','Malick','Pate','Abdou','Mouctar','Bassirou','Demba','Issa'];
-const FIRST_NAMES_F = ['Fatou','Aminata','Mariama','Awa','Khady','Ndèye','Coumba','Dieynaba','Sokhna','Rokhaya','Yacine','Adama','Bineta','Oulimata','Ndeye','Aissatou','Maimouna','Djénéba','Kine','Mariétou','Astou','Thioro','Safiétou','Nafi','Daba','Coly','Gnilane','Fama','Hawa','Oumy','Ramata','Siga','Mbegue','Mareme','Djenaba','Yaram','Ndack','Touba','Soukeyna'];
-const LAST_NAMES = ['Diop','Ndiaye','Sow','Fall','Dia','Ba','Sy','Mbaye','Gueye','Kane','Diallo','Seck','Diouf','Niang','Pouye','Sarr','Thiam','Mboup','Wade','Guissé','Cissé','Traoré','Tall','Aidara','Senghor','Dieng','Camara','Ly','Faye','Badji','Sakho','Dembélé','Konaté','Hane','Diedhiou','Sonko','Diatta','Sané','Sambou','Coly','Tendeng','Gomis','Ndong','Mané','Daff','Bâ','Wone','Ndir','Penda','Cissokho'];
-const LOCATIONS = ['Dakar','Pikine','Guédiawaye','Rufisque','Thiès','Saint-Louis','Kaolack','Ziguinchor','Tambacounda','Kolda','Diourbel','Louga','Diamniadio','Mbao','Parcelles Assainies','Médina','Sandaga','Plateau','Grand Yoff','Liberté','Sacr-Coeur','Mermoz','Almadies','Fann','Ngor','Bignona','Sédhiou','Kaffrine','Matam','Podor','Linguère','Dagana'];
-const BIOS = [
-  'Entrepreneur passionné, toujours en quête de nouvelles opportunités.',
-  'Commerçant depuis 10 ans au marché Sandaga.',
-  'Fondateur d\'une PME dans le transport de marchandises.',
-  'Investisseur dans l\'immobilier à Diamniadio.',
-  'Éleveur dans la région de Thiès, spécialisé en volailles.',
-  'Femme d\'affaires dans le commerce de détail.',
-  'Expert en agriculture irriguée dans la Vallée du Fleuve.',
-  'Propriétaire d\'un cyber café à Pikine.',
-  'Artisan bijoutier reconnu dans la Médina.',
-  'Transporteur inter-villes Dakar-Kaolack.',
-  'Fournisseur de matériel de construction.',
-  'Négociant en produits alimentaires à Sandaga.',
-  'Gérant de boutique de téléphones au Plateau.',
-  'Restaurateur à Médina, spécialité thiéboudienne.',
-  'Commerçant d\'or et bijoux à Colobane.',
-  'Marchand de tissus wax et bazin.',
-  'Tailleur de haute couture à Grand Yoff.',
-  'Mécanicien auto indépendant.',
-  'Éleveur de bovins dans le Fouta.',
-  'Peintre en bâtiment, 15 ans d\'expérience.',
-  'Pêcheur artisanal à Soumbédioune.',
-  'Agricultrice maraîchère à Sangalkam.',
-  'Commerçant de produits électroniques.',
-  'Gérant de salon de coiffure.',
-  'Menuisier spécialisé en mobilier moderne.',
-  'Plombier certifié, interventions Dakar et banlieue.',
-  'Électricien avec 8 ans d\'expérience.',
-  'Chauffeur de taxi, 5 ans de métier.',
-  'Couturière spécialisée en boubou brodé.',
-  'Vendeuse de fruits et légumes au marché Kermel.',
-  'Propriétaire d\'une quincaillerie à Guédiawaye.',
-  'Fournisseur de poissons frais de Kayar.',
-  'Technicien en climatisation et réfrigération.',
-  'Gérant d\'un pressing moderne.',
-  'Importateur de voitures d\'occasion.',
-  'Agriculteur dans le bassin arachidier de Diourbel.',
-  'Tradipraticien et vendeur de plantes médicinales.',
-  'Photographe événementiel.',
-  'Tisseur de tapis traditionnels.',
-];
-const SHOP_NAMES = ['Boutique du Coin','Épicerie Moderne','Alimentation Générale','Chez Papa','Boutique Sénégal','Marché Frais','Dakar Store','Sandaga Shop','Gold & Bijoux','Transport Express','BTP Sénégal','Agri Plus','Tech Zone','Cyber Connect','Auto Plus','Immobilier du Soleil','Meubles & Déco','Couture Élégance','Resto du Terroir','Boulangerie Moderne','Quincaillerie du Nord','Poissonnerie Fraîche','Boucherie Premium','Fruits & Légumes','Electro Men','Fashion Style','Sport & Loisirs','Peinture & Décoration','Plomberie Service','Cuir & Maroquinerie','Parfumerie Luxe','Librairie du Savoir','Clinique Mobile','Maison Connectée','Salon Béauté Prestige','Pressing Express','Santé & Bien-être','Bric-à-brac Sénégal','Teranga Telecom','Sahel Digital','Minoterie du Nord','Savonnerie Artisanale','Poterie de Colobane','Atelier Mécanique Diop','Garage Auto Mbaye'];
-const SHOP_CATEGORIES = ['boutique','entreprise','commerce','service'];
-const PRODUCTS = [
-  {name:'Lingot or 10g',category:'or',pMin:350000,pMax:400000},{name:'Lingot or 50g',category:'or',pMin:1500000,pMax:1800000},{name:'Bracelet or 18k',category:'or',pMin:150000,pMax:250000},{name:'Chaîne or massif',category:'or',pMin:200000,pMax:350000},{name:'Bague or blanc',category:'or',pMin:120000,pMax:200000},{name:'Pendentif or',category:'or',pMin:80000,pMax:180000},{name:'Bague diamant 1ct',category:'diamant',pMin:500000,pMax:2000000},{name:'Collier diamant',category:'diamant',pMin:1000000,pMax:5000000},{name:'Bracelet diamant',category:'diamant',pMin:800000,pMax:3000000},{name:'Terrain 200m² Diamniadio',category:'immobilier',pMin:5000000,pMax:15000000},{name:'Case 3 pièces Pikine',category:'immobilier',pMin:3000000,pMax:8000000},{name:'Villa 5 pièces Almadies',category:'immobilier',pMin:25000000,pMax:80000000},{name:'Appartement Fann',category:'immobilier',pMin:8000000,pMax:20000000},{name:'Local commercial Sandaga',category:'immobilier',pMin:10000000,pMax:30000000},{name:'Moto Java',category:'vehicule',pMin:350000,pMax:500000},{name:'Mercedes Classe C',category:'vehicule',pMin:8000000,pMax:15000000},{name:'Toyota Hilux',category:'vehicule',pMin:15000000,pMax:25000000},{name:'Minibus 18 places',category:'vehicule',pMin:8000000,pMax:12000000},{name:'Dacia Logan',category:'vehicule',pMin:5000000,pMax:8000000},{name:'Riz 50kg',category:'alimentaire',pMin:25000,pMax:40000},{name:'Huile arachide 5L',category:'alimentaire',pMin:8000,pMax:15000},{name:'Poisson fumé 10kg',category:'alimentaire',pMin:15000,pMax:30000},{name:'Sucre 25kg',category:'alimentaire',pMin:18000,pMax:28000},{name:'Lait en poudre',category:'alimentaire',pMin:5000,pMax:12000},{name:'Ciment 50 sacs',category:'materiel',pMin:250000,pMax:350000},{name:'Groupe électrogène',category:'materiel',pMin:200000,pMax:500000},{name:'Fer à béton tonne',category:'materiel',pMin:350000,pMax:500000},{name:'Parpaing 1000',category:'materiel',pMin:80000,pMax:150000},{name:'Montre Rolex',category:'luxe',pMin:2000000,pMax:8000000},{name:'iPhone 15 Pro',category:'luxe',pMin:600000,pMax:900000},{name:'Costume italien',category:'luxe',pMin:100000,pMax:300000},{name:'Sac Louis Vuitton',category:'luxe',pMin:500000,pMax:2000000},{name:'Boubou brodé grand soir',category:'luxe',pMin:50000,pMax:200000},{name:'Parfum Chanel N5',category:'luxe',pMin:80000,pMax:150000},
-];
-const SERVICES = [
-  {name:'Transport Dakar-Thiès',category:'transport',pMin:3000,pMax:5000},{name:'Transport marchandises Dakar-Kaolack',category:'transport',pMin:50000,pMax:200000},{name:'Déménagement local',category:'transport',pMin:50000,pMax:150000},{name:'Course en ville',category:'transport',pMin:1500,pMax:5000},{name:'Construction maison R+1',category:'construction',pMin:5000000,pMax:20000000},{name:'Maçonnerie',category:'construction',pMin:200000,pMax:500000},{name:'Peinture bâtiment',category:'construction',pMin:100000,pMax:300000},{name:'Carrelage',category:'construction',pMin:150000,pMax:400000},{name:'Plomberie',category:'construction',pMin:50000,pMax:200000},{name:'Réparation téléphone',category:'reparation',pMin:5000,pMax:30000},{name:'Réparation climatisation',category:'reparation',pMin:25000,pMax:75000},{name:'Réparation voiture',category:'reparation',pMin:20000,pMax:200000},{name:'Réparation ordinateur',category:'reparation',pMin:10000,pMax:50000},{name:'Conseil juridique',category:'conseil',pMin:50000,pMax:200000},{name:'Comptabilité',category:'conseil',pMin:100000,pMax:500000},{name:'Conseil en investissement',category:'conseil',pMin:75000,pMax:300000},{name:'Formation couture',category:'formation',pMin:50000,pMax:200000},{name:'Formation informatique',category:'formation',pMin:30000,pMax:100000},{name:'Cours de langue',category:'formation',pMin:15000,pMax:50000},{name:'Manoeuvre journalier',category:'main_d_oeuvre',pMin:5000,pMax:10000},{name:'Couturier traditionnel',category:'main_d_oeuvre',pMin:15000,pMax:50000},{name:'Cuisinier événementiel',category:'main_d_oeuvre',pMin:25000,pMax:75000},{name:'Garde malade',category:'main_d_oeuvre',pMin:10000,pMax:25000},
-];
-const ASSET_TEMPLATES = [
-  {name:'Lingot or 10g',category:'or',pMin:350000,pMax:400000},{name:'Bracelet or 18k',category:'or',pMin:150000,pMax:250000},{name:'Chaîne or massif',category:'or',pMin:200000,pMax:350000},{name:'Bague diamant 1ct',category:'diamant',pMin:500000,pMax:2000000},{name:'Collier diamant',category:'diamant',pMin:1000000,pMax:5000000},{name:'Terrain Diamniadio',category:'immobilier',pMin:5000000,pMax:15000000},{name:'Villa Almadies',category:'immobilier',pMin:25000000,pMax:80000000},{name:'Case Pikine',category:'immobilier',pMin:3000000,pMax:8000000},{name:'Appartement Plateau',category:'immobilier',pMin:10000000,pMax:25000000},{name:'Toyota Hilux',category:'vehicule',pMin:15000000,pMax:25000000},{name:'Mercedes Classe C',category:'vehicule',pMin:8000000,pMax:15000000},{name:'Moto Java',category:'vehicule',pMin:350000,pMax:500000},{name:'Montre Rolex',category:'luxe',pMin:2000000,pMax:8000000},{name:'iPhone 15 Pro',category:'luxe',pMin:600000,pMax:900000},{name:'Sac Louis Vuitton',category:'luxe',pMin:500000,pMax:2000000},{name:'Boubou brodé',category:'luxe',pMin:50000,pMax:200000},
-];
-const FEED_TEMPLATES = [
-  {type:'inscription',tf:n=>`${n} a rejoint Sama Économie !`},
-  {type:'achat',tf:n=>`${n} vient d'acheter un bien sur le marché`},
-  {type:'succes',tf:n=>`${n} a réussi son projet avec succès !`},
-  {type:'pret',tf:n=>`${n} a obtenu un prêt pour son projet`},
-  {type:'vente',tf:n=>`${n} vend un de ses biens au meilleur prix`},
-  {type:'faillite',tf:n=>`${n} est en difficulté financière...`},
-  {type:'challenge',tf:n=>`${n} a lancé un défi aux entrepreneurs`},
-  {type:'boutique',tf:n=>`${n} a ouvert une nouvelle boutique`},
-];
-const DEMAND_TITLES = ['Cherche terrain à bâtir à Diamniadio','Besoin de transport marchandises vers Kaolack','Recherche maçon expérimenté pour construction','Cherche fournisseur de ciment en gros','Besoin d\'un mécanicien fiable','Recherche climaticien pour installation','Cherche coursier pour livraisons quotidiennes','Besoin de matériel de pêche professionnel','Recherche bailleur pour local commercial','Cherche peintre pour ravalement façade','Besoin d\'une Toyota Hilux d\'occasion','Recherche grossiste en produits alimentaires','Cherche électricien pour installation solaire','Besoin de service de déménagement','Recherche artisan bijoutier pour commande spéciale','Cherche cuisinier pour mariage 200 personnes','Besoin de 50 sacs de ciment urgemment','Recherche chauffeur privé','Cherche location de groupe électrogène','Besoin d\'expert comptable pour bilan annuel','Recherche fournisseur de tissu wax en gros','Cherche carreleur pour 150m²','Besoin de main d\'oeuvre pour récolte','Recherche adjudicateur pour marché public','Cherche partenaire pour projet agribusiness','Besoin de formation en informatique','Recherche imprimeur pour cartes de visite','Cherche plombier urgently','Besoin de location voiture pour une semaine','Recherche tisseur de tapis traditionnels'];
-const COMMENTS = ['Trop bien ! Continue comme ça !','Bonne chance pour ton projet !','Intéressant, je vais suivre ça de près.','Conseil : pense bien à ton étude de marché.','J\'ai fait pareil et j\'ai réussi !','Attention aux dépenses imprévues...','Tu devrais aller voir sur le marché.','Que Dieu t\'aide dans ton business.','Je peux te proposer mes services.','Tu gères ! Un vrai entrepreneur.'];
-const REVIEWS = ['Très bon partenaire, fiable et ponctuel.','Service correct, rien à redire.','Pas satisfait du délai de livraison.','Excellent rapport qualité-prix.','Je recommande vivement !','Professionnel et sérieux.','Un peu cher mais la qualité est là.','Bonne communication tout au long.','Service médiocre, je ne recommande pas.','Un vrai homme d\'affaires !'];
+const FM=['Abdoulaye','Moussa','Ibrahima','Ousmane','Mamadou','Pape','Cheikh','Mbaye','Seydou','Boubacar','Amadou','Idrissa','Birame','Mouhamadou','El Hadj','Serigne','Modou','Lamine','Daouda','Yaya','Souleymane','Aliou','Babacar','Thierno','Oumar','Falilou','Samba','Moustapha','Djibril','Mansour','Bouna','Salif','Malick','Pate','Abdou','Mouctar','Bassirou','Demba','Issa'];
+const FF=['Fatou','Aminata','Mariama','Awa','Khady','Ndèye','Coumba','Dieynaba','Sokhna','Rokhaya','Yacine','Adama','Bineta','Oulimata','Ndeye','Aissatou','Maimouna','Djénéba','Kine','Mariétou','Astou','Thioro','Safiétou','Nafi','Daba','Coly','Gnilane','Fama','Hawa','Oumy','Ramata','Siga','Mbegue','Mareme','Djenaba','Yaram','Ndack','Touba','Soukeyna'];
+const LN=['Diop','Ndiaye','Sow','Fall','Dia','Ba','Sy','Mbaye','Gueye','Kane','Diallo','Seck','Diouf','Niang','Pouye','Sarr','Thiam','Mboup','Wade','Guissé','Cissé','Traoré','Tall','Aidara','Senghor','Dieng','Camara','Ly','Faye','Badji','Sakho','Dembélé','Konaté','Hane','Diedhiou','Sonko','Diatta','Sané','Sambou','Coly','Tendeng','Gomis','Ndong','Mané','Daff','Bâ','Wone','Ndir','Penda','Cissokho'];
+const LOC=['Dakar','Pikine','Guédiawaye','Rufisque','Thiès','Saint-Louis','Kaolack','Ziguinchor','Tambacounda','Kolda','Diourbel','Louga','Diamniadio','Mbao','Parcelles Assainies','Médina','Sandaga','Plateau','Grand Yoff','Liberté','Sacr-Coeur','Mermoz','Almadies','Fann','Ngor','Bignona','Sédhiou','Kaffrine','Matam','Podor','Linguère','Dagana'];
+const BIO=['Entrepreneur passionné, toujours en quête de nouvelles opportunités.','Commerçant depuis 10 ans au marché Sandaga.','Fondateur d\'une PME dans le transport de marchandises.','Investisseur dans l\'immobilier à Diamniadio.','Éleveur dans la région de Thiès, spécialisé en volailles.','Femme d\'affaires dans le commerce de détail.','Expert en agriculture irriguée dans la Vallée du Fleuve.','Propriétaire d\'un cyber café à Pikine.','Artisan bijoutier reconnu dans la Médina.','Transporteur inter-villes Dakar-Kaolack.','Fournisseur de matériel de construction.','Négociant en produits alimentaires à Sandaga.','Gérant de boutique de téléphones au Plateau.','Restaurateur à Médina, spécialité thiéboudienne.','Commerçant d\'or et bijoux à Colobane.','Marchand de tissus wax et bazin.','Tailleur de haute couture à Grand Yoff.','Mécanicien auto indépendant.','Éleveur de bovins dans le Fouta.','Peintre en bâtiment, 15 ans d\'expérience.','Pêcheur artisanal à Soumbédioune.','Agricultrice maraîchère à Sangalkam.','Commerçant de produits électroniques.','Gérant de salon de coiffure.','Menuisier spécialisé en mobilier moderne.','Plombier certifié, interventions Dakar et banlieue.','Électricien avec 8 ans d\'expérience.','Chauffeur de taxi, 5 ans de métier.','Couturière spécialisée en boubou brodé.','Vendeuse de fruits et légumes au marché Kermel.','Propriétaire d\'une quincaillerie à Guédiawaye.','Fournisseur de poissons frais de Kayar.','Technicien en climatisation et réfrigération.','Gérant d\'un pressing moderne.','Importateur de voitures d\'occasion.','Agriculteur dans le bassin arachidier de Diourbel.','Tradipraticien et vendeur de plantes médicinales.','Photographe événementiel.','Tisseur de tapis traditionnels.'];
+const SN=['Boutique du Coin','Épicerie Moderne','Alimentation Générale','Chez Papa','Boutique Sénégal','Marché Frais','Dakar Store','Sandaga Shop','Gold & Bijoux','Transport Express','BTP Sénégal','Agri Plus','Tech Zone','Cyber Connect','Auto Plus','Immobilier du Soleil','Meubles & Déco','Couture Élégance','Resto du Terroir','Boulangerie Moderne','Quincaillerie du Nord','Poissonnerie Fraîche','Boucherie Premium','Fruits & Légumes','Electro Men','Fashion Style','Sport & Loisirs','Peinture & Décoration','Plomberie Service','Cuir & Maroquinerie','Parfumerie Luxe','Librairie du Savoir','Clinique Mobile','Maison Connectée','Salon Béauté Prestige','Pressing Express','Santé & Bien-être','Bric-à-brac Sénégal','Teranga Telecom','Sahel Digital','Minoterie du Nord','Savonnerie Artisanale','Poterie de Colobane','Atelier Mécanique Diop','Garage Auto Mbaye'];
+const SC=['boutique','entreprise','commerce','service'];
+const PROD=[{n:'Lingot or 10g',c:'or',a:350000,b:400000},{n:'Lingot or 50g',c:'or',a:1500000,b:1800000},{n:'Bracelet or 18k',c:'or',a:150000,b:250000},{n:'Chaîne or massif',c:'or',a:200000,b:350000},{n:'Bague or blanc',c:'or',a:120000,b:200000},{n:'Pendentif or',c:'or',a:80000,b:180000},{n:'Bague diamant 1ct',c:'diamant',a:500000,b:2000000},{n:'Collier diamant',c:'diamant',a:1000000,b:5000000},{n:'Bracelet diamant',c:'diamant',a:800000,b:3000000},{n:'Terrain 200m2 Diamniadio',c:'immobilier',a:5000000,b:15000000},{n:'Case 3 pièces Pikine',c:'immobilier',a:3000000,b:8000000},{n:'Villa 5 pièces Almadies',c:'immobilier',a:25000000,b:80000000},{n:'Appartement Fann',c:'immobilier',a:8000000,b:20000000},{n:'Local commercial Sandaga',c:'immobilier',a:10000000,b:30000000},{n:'Moto Java',c:'vehicule',a:350000,b:500000},{n:'Mercedes Classe C',c:'vehicule',a:8000000,b:15000000},{n:'Toyota Hilux',c:'vehicule',a:15000000,b:25000000},{n:'Minibus 18 places',c:'vehicule',a:8000000,b:12000000},{n:'Dacia Logan',c:'vehicule',a:5000000,b:8000000},{n:'Riz 50kg',c:'alimentaire',a:25000,b:40000},{n:'Huile arachide 5L',c:'alimentaire',a:8000,b:15000},{n:'Poisson fumé 10kg',c:'alimentaire',a:15000,b:30000},{n:'Sucre 25kg',c:'alimentaire',a:18000,b:28000},{n:'Lait en poudre',c:'alimentaire',a:5000,b:12000},{n:'Ciment 50 sacs',c:'materiel',a:250000,b:350000},{n:'Groupe électrogène',c:'materiel',a:200000,b:500000},{n:'Fer à béton tonne',c:'materiel',a:350000,b:500000},{n:'Parpaing 1000',c:'materiel',a:80000,b:150000},{n:'Montre Rolex',c:'luxe',a:2000000,b:8000000},{n:'iPhone 15 Pro',c:'luxe',a:600000,b:900000},{n:'Costume italien',c:'luxe',a:100000,b:300000},{n:'Sac Louis Vuitton',c:'luxe',a:500000,b:2000000},{n:'Boubou brodé grand soir',c:'luxe',a:50000,b:200000},{n:'Parfum Chanel N5',c:'luxe',a:80000,b:150000}];
+const SERV=[{n:'Transport Dakar-Thiès',c:'transport',a:3000,b:5000},{n:'Transport marchandises Dakar-Kaolack',c:'transport',a:50000,b:200000},{n:'Déménagement local',c:'transport',a:50000,b:150000},{n:'Course en ville',c:'transport',a:1500,b:5000},{n:'Construction maison R+1',c:'construction',a:5000000,b:20000000},{n:'Maçonnerie',c:'construction',a:200000,b:500000},{n:'Peinture bâtiment',c:'construction',a:100000,b:300000},{n:'Carrelage',c:'construction',a:150000,b:400000},{n:'Plomberie',c:'construction',a:50000,b:200000},{n:'Réparation téléphone',c:'reparation',a:5000,b:30000},{n:'Réparation climatisation',c:'reparation',a:25000,b:75000},{n:'Réparation voiture',c:'reparation',a:20000,b:200000},{n:'Réparation ordinateur',c:'reparation',a:10000,b:50000},{n:'Conseil juridique',c:'conseil',a:50000,b:200000},{n:'Comptabilité',c:'conseil',a:100000,b:500000},{n:'Conseil en investissement',c:'conseil',a:75000,b:300000},{n:'Formation couture',c:'formation',a:50000,b:200000},{n:'Formation informatique',c:'formation',a:30000,b:100000},{n:'Cours de langue',c:'formation',a:15000,b:50000},{n:'Manoeuvre journalier',c:'main_d_oeuvre',a:5000,b:10000},{n:'Couturier traditionnel',c:'main_d_oeuvre',a:15000,b:50000},{n:'Cuisinier événementiel',c:'main_d_oeuvre',a:25000,b:75000},{n:'Garde malade',c:'main_d_oeuvre',a:10000,b:25000}];
+const ASSETS=[{n:'Lingot or 10g',c:'or',a:350000,b:400000},{n:'Bracelet or 18k',c:'or',a:150000,b:250000},{n:'Chaîne or massif',c:'or',a:200000,b:350000},{n:'Bague diamant 1ct',c:'diamant',a:500000,b:2000000},{n:'Collier diamant',c:'diamant',a:1000000,b:5000000},{n:'Terrain Diamniadio',c:'immobilier',a:5000000,b:15000000},{n:'Villa Almadies',c:'immobilier',a:25000000,b:80000000},{n:'Case Pikine',c:'immobilier',a:3000000,b:8000000},{n:'Appartement Plateau',c:'immobilier',a:10000000,b:25000000},{n:'Toyota Hilux',c:'vehicule',a:15000000,b:25000000},{n:'Mercedes Classe C',c:'vehicule',a:8000000,b:15000000},{n:'Moto Java',c:'vehicule',a:350000,b:500000},{n:'Montre Rolex',c:'luxe',a:2000000,b:8000000},{n:'iPhone 15 Pro',c:'luxe',a:600000,b:900000},{n:'Sac Louis Vuitton',c:'luxe',a:500000,b:2000000},{n:'Boubou brodé',c:'luxe',a:50000,b:200000}];
+const FT=[{t:'inscription',f:n=>`${n} a rejoint Sama Économie !`},{t:'achat',f:n=>`${n} vient d'acheter un bien sur le marché`},{t:'succes',f:n=>`${n} a réussi son projet !`},{t:'pret',f:n=>`${n} a obtenu un prêt`},{t:'vente',f:n=>`${n} vend un bien au meilleur prix`},{t:'faillite',f:n=>`${n} est en difficulté financière...`},{t:'challenge',f:n=>`${n} a lancé un défi`},{t:'boutique',f:n=>`${n} a ouvert une boutique`}];
+const DT=['Cherche terrain à bâtir à Diamniadio','Besoin de transport marchandises vers Kaolack','Recherche maçon expérimenté','Cherche fournisseur de ciment en gros','Besoin d\'un mécanicien fiable','Recherche climaticien','Cherche coursier pour livraisons','Besoin de matériel de pêche','Recherche bailleur pour local commercial','Cherche peintre pour façade','Besoin d\'une Toyota Hilux','Recherche grossiste produits alimentaires','Cherche électricien pour installation solaire','Besoin de service de déménagement','Recherche artisan bijoutier','Cherche cuisinier pour mariage','Besoin de 50 sacs de ciment','Recherche chauffeur privé','Cherche location groupe électrogène','Besoin d\'expert comptable','Recherche fournisseur tissu wax','Cherche carreleur pour 150m2','Besoin de main d\'oeuvre pour récolte','Recherche adjudicateur marché public','Cherche partenaire agribusiness','Besoin de formation informatique','Recherche imprimeur cartes de visite','Cherche plombier','Besoin location voiture une semaine','Recherche tisseur tapis traditionnels'];
+const COM=['Trop bien ! Continue comme ça !','Bonne chance pour ton projet !','Intéressant, je vais suivre ça.','Conseil : étudie bien ton marché.','J\'ai fait pareil et j\'ai réussi !','Attention aux dépenses imprévues...','Va voir sur le marché, il y a de bonnes affaires.','Que Dieu t\'aide dans ton business.','Je peux te proposer mes services.','Tu gères ! Un vrai entrepreneur.'];
+const REV=['Très bon partenaire, fiable et ponctuel.','Service correct, rien à redire.','Pas satisfait du délai de livraison.','Excellent rapport qualité-prix.','Je recommande vivement !','Professionnel et sérieux.','Un peu cher mais la qualité est là.','Bonne communication tout au long.','Service médiocre, je ne recommande pas.','Un vrai entrepreneur !'];
 
-// ============================================================
-// GÉNÉRATION SQL
-// ============================================================
-function generateSQL() {
-  let sql = '';
-
-  // === PARTIE 1: SCHÉMA ===
-  sql += `-- ============================================================
--- SAMA ÉCONOMIE V2 — Schéma complet + 300 agents IA
--- Simulation économique sénégalaise
--- Généré automatiquement
+// ==================== PARTIE 1 : SCHEMA ====================
+const part1 = `-- ============================================================
+-- PARTIE 1 : SAMA ÉCONOMIE V2 — Création des tables
+-- Exécuter d'abord celui-ci, puis la Partie 2
 -- ============================================================
 
--- CLEANUP
+-- CLEANUP V1 + V2
 DROP TABLE IF EXISTS "FeedComment" CASCADE;
 DROP TABLE IF EXISTS "FeedLike" CASCADE;
 DROP TABLE IF EXISTS "Review" CASCADE;
@@ -134,8 +60,7 @@ DROP TABLE IF EXISTS "transactions" CASCADE;
 DROP TRIGGER IF EXISTS on_auth_user_created ON auth.users;
 DROP FUNCTION IF EXISTS public.handle_new_user();
 
--- Utilisateurs
-CREATE TABLE IF NOT EXISTS "User" (
+CREATE TABLE "User" (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   name TEXT NOT NULL,
   email TEXT UNIQUE,
@@ -161,7 +86,7 @@ CREATE TABLE IF NOT EXISTS "User" (
   "updatedAt" TIMESTAMP NOT NULL DEFAULT now()
 );
 
-CREATE TABLE IF NOT EXISTS "Loan" (
+CREATE TABLE "Loan" (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   userId UUID NOT NULL REFERENCES "User"(id) ON DELETE CASCADE,
   amount DOUBLE PRECISION NOT NULL,
@@ -177,7 +102,7 @@ CREATE TABLE IF NOT EXISTS "Loan" (
   "updatedAt" TIMESTAMP NOT NULL DEFAULT now()
 );
 
-CREATE TABLE IF NOT EXISTS "Project" (
+CREATE TABLE "Project" (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   userId UUID NOT NULL REFERENCES "User"(id) ON DELETE CASCADE,
   loanId UUID REFERENCES "Loan"(id) ON DELETE SET NULL,
@@ -196,7 +121,7 @@ CREATE TABLE IF NOT EXISTS "Project" (
   "updatedAt" TIMESTAMP NOT NULL DEFAULT now()
 );
 
-CREATE TABLE IF NOT EXISTS "ProjectExpense" (
+CREATE TABLE "ProjectExpense" (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   projectId UUID NOT NULL REFERENCES "Project"(id) ON DELETE CASCADE,
   name TEXT NOT NULL,
@@ -208,7 +133,7 @@ CREATE TABLE IF NOT EXISTS "ProjectExpense" (
   paid BOOLEAN NOT NULL DEFAULT FALSE
 );
 
-CREATE TABLE IF NOT EXISTS "GameEvent" (
+CREATE TABLE "GameEvent" (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   userId UUID NOT NULL REFERENCES "User"(id) ON DELETE CASCADE,
   projectId UUID REFERENCES "Project"(id) ON DELETE SET NULL,
@@ -220,7 +145,7 @@ CREATE TABLE IF NOT EXISTS "GameEvent" (
   "createdAt" TIMESTAMP NOT NULL DEFAULT now()
 );
 
-CREATE TABLE IF NOT EXISTS "Asset" (
+CREATE TABLE "Asset" (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   userId UUID NOT NULL REFERENCES "User"(id) ON DELETE CASCADE,
   name TEXT NOT NULL,
@@ -234,7 +159,7 @@ CREATE TABLE IF NOT EXISTS "Asset" (
   "createdAt" TIMESTAMP NOT NULL DEFAULT now()
 );
 
-CREATE TABLE IF NOT EXISTS "MarketPrice" (
+CREATE TABLE "MarketPrice" (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   category TEXT NOT NULL UNIQUE,
   price DOUBLE PRECISION NOT NULL,
@@ -242,7 +167,7 @@ CREATE TABLE IF NOT EXISTS "MarketPrice" (
   "updatedAt" TIMESTAMP NOT NULL DEFAULT now()
 );
 
-CREATE TABLE IF NOT EXISTS "Transaction" (
+CREATE TABLE "Transaction" (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   fromUserId UUID REFERENCES "User"(id) ON DELETE SET NULL,
   toUserId UUID REFERENCES "User"(id) ON DELETE SET NULL,
@@ -252,7 +177,7 @@ CREATE TABLE IF NOT EXISTS "Transaction" (
   "createdAt" TIMESTAMP NOT NULL DEFAULT now()
 );
 
-CREATE TABLE IF NOT EXISTS "Shop" (
+CREATE TABLE "Shop" (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   ownerId UUID NOT NULL REFERENCES "User"(id) ON DELETE CASCADE,
   name TEXT NOT NULL,
@@ -266,7 +191,7 @@ CREATE TABLE IF NOT EXISTS "Shop" (
   "createdAt" TIMESTAMP NOT NULL DEFAULT now()
 );
 
-CREATE TABLE IF NOT EXISTS "Product" (
+CREATE TABLE "Product" (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   shopId UUID NOT NULL REFERENCES "Shop"(id) ON DELETE CASCADE,
   ownerId UUID NOT NULL REFERENCES "User"(id) ON DELETE CASCADE,
@@ -280,7 +205,7 @@ CREATE TABLE IF NOT EXISTS "Product" (
   "createdAt" TIMESTAMP NOT NULL DEFAULT now()
 );
 
-CREATE TABLE IF NOT EXISTS "Service" (
+CREATE TABLE "Service" (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   shopId UUID NOT NULL REFERENCES "Shop"(id) ON DELETE CASCADE,
   ownerId UUID NOT NULL REFERENCES "User"(id) ON DELETE CASCADE,
@@ -292,7 +217,7 @@ CREATE TABLE IF NOT EXISTS "Service" (
   "createdAt" TIMESTAMP NOT NULL DEFAULT now()
 );
 
-CREATE TABLE IF NOT EXISTS "Demand" (
+CREATE TABLE "Demand" (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   userId UUID NOT NULL REFERENCES "User"(id) ON DELETE CASCADE,
   title TEXT NOT NULL,
@@ -305,7 +230,7 @@ CREATE TABLE IF NOT EXISTS "Demand" (
   "updatedAt" TIMESTAMP NOT NULL DEFAULT now()
 );
 
-CREATE TABLE IF NOT EXISTS "Proposal" (
+CREATE TABLE "Proposal" (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   demandId UUID NOT NULL REFERENCES "Demand"(id) ON DELETE CASCADE,
   fromUserId UUID NOT NULL REFERENCES "User"(id) ON DELETE CASCADE,
@@ -317,7 +242,7 @@ CREATE TABLE IF NOT EXISTS "Proposal" (
   "createdAt" TIMESTAMP NOT NULL DEFAULT now()
 );
 
-CREATE TABLE IF NOT EXISTS "Order" (
+CREATE TABLE "Order" (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   buyerId UUID NOT NULL REFERENCES "User"(id) ON DELETE CASCADE,
   sellerId UUID NOT NULL REFERENCES "User"(id) ON DELETE CASCADE,
@@ -329,7 +254,7 @@ CREATE TABLE IF NOT EXISTS "Order" (
   "createdAt" TIMESTAMP NOT NULL DEFAULT now()
 );
 
-CREATE TABLE IF NOT EXISTS "FeedPost" (
+CREATE TABLE "FeedPost" (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   userId UUID NOT NULL REFERENCES "User"(id) ON DELETE CASCADE,
   type TEXT NOT NULL,
@@ -341,14 +266,14 @@ CREATE TABLE IF NOT EXISTS "FeedPost" (
   "createdAt" TIMESTAMP NOT NULL DEFAULT now()
 );
 
-CREATE TABLE IF NOT EXISTS "FeedLike" (
+CREATE TABLE "FeedLike" (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   postId UUID NOT NULL REFERENCES "FeedPost"(id) ON DELETE CASCADE,
   userId UUID NOT NULL REFERENCES "User"(id) ON DELETE CASCADE,
   UNIQUE(postId, userId)
 );
 
-CREATE TABLE IF NOT EXISTS "FeedComment" (
+CREATE TABLE "FeedComment" (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   postId UUID NOT NULL REFERENCES "FeedPost"(id) ON DELETE CASCADE,
   userId UUID NOT NULL REFERENCES "User"(id) ON DELETE CASCADE,
@@ -356,7 +281,7 @@ CREATE TABLE IF NOT EXISTS "FeedComment" (
   "createdAt" TIMESTAMP NOT NULL DEFAULT now()
 );
 
-CREATE TABLE IF NOT EXISTS "Review" (
+CREATE TABLE "Review" (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   fromUserId UUID NOT NULL REFERENCES "User"(id) ON DELETE CASCADE,
   toUserId UUID NOT NULL REFERENCES "User"(id) ON DELETE CASCADE,
@@ -367,7 +292,7 @@ CREATE TABLE IF NOT EXISTS "Review" (
   UNIQUE(fromUserId, toUserId, "createdAt")
 );
 
-CREATE TABLE IF NOT EXISTS "Challenge" (
+CREATE TABLE "Challenge" (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   fromUserId UUID NOT NULL REFERENCES "User"(id) ON DELETE CASCADE,
   toUserId UUID NOT NULL REFERENCES "User"(id) ON DELETE CASCADE,
@@ -379,7 +304,7 @@ CREATE TABLE IF NOT EXISTS "Challenge" (
   "updatedAt" TIMESTAMP NOT NULL DEFAULT now()
 );
 
-CREATE TABLE IF NOT EXISTS "P2PLoan" (
+CREATE TABLE "P2PLoan" (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   lenderId UUID NOT NULL REFERENCES "User"(id) ON DELETE CASCADE,
   borrowerId UUID NOT NULL REFERENCES "User"(id) ON DELETE CASCADE,
@@ -391,14 +316,14 @@ CREATE TABLE IF NOT EXISTS "P2PLoan" (
   "createdAt" TIMESTAMP NOT NULL DEFAULT now()
 );
 
-CREATE TABLE IF NOT EXISTS "ProfileView" (
+CREATE TABLE "ProfileView" (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   viewerId UUID NOT NULL REFERENCES "User"(id) ON DELETE CASCADE,
   viewedId UUID NOT NULL REFERENCES "User"(id) ON DELETE CASCADE,
   "createdAt" TIMESTAMP NOT NULL DEFAULT now()
 );
 
-CREATE TABLE IF NOT EXISTS "Notification" (
+CREATE TABLE "Notification" (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   userId UUID NOT NULL REFERENCES "User"(id) ON DELETE CASCADE,
   type TEXT NOT NULL,
@@ -409,7 +334,7 @@ CREATE TABLE IF NOT EXISTS "Notification" (
   "createdAt" TIMESTAMP NOT NULL DEFAULT now()
 );
 
-CREATE TABLE IF NOT EXISTS "GameSettings" (
+CREATE TABLE "GameSettings" (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   key TEXT NOT NULL UNIQUE,
   value TEXT NOT NULL,
@@ -417,21 +342,21 @@ CREATE TABLE IF NOT EXISTS "GameSettings" (
 );
 
 -- INDEXES
-CREATE INDEX IF NOT EXISTS idx_user_email ON "User"(email);
-CREATE INDEX IF NOT EXISTS idx_user_is_agent ON "User"(is_agent);
-CREATE INDEX IF NOT EXISTS idx_user_credit_score ON "User"(credit_score DESC);
-CREATE INDEX IF NOT EXISTS idx_user_cash ON "User"(cash DESC);
-CREATE INDEX IF NOT EXISTS idx_loan_user ON "Loan"(userId);
-CREATE INDEX IF NOT EXISTS idx_loan_status ON "Loan"(status);
-CREATE INDEX IF NOT EXISTS idx_asset_user ON "Asset"(userId);
-CREATE INDEX IF NOT EXISTS idx_shop_owner ON "Shop"(ownerId);
-CREATE INDEX IF NOT EXISTS idx_product_shop ON "Product"(shopId);
-CREATE INDEX IF NOT EXISTS idx_service_shop ON "Service"(shopId);
-CREATE INDEX IF NOT EXISTS idx_demand_user ON "Demand"(userId);
-CREATE INDEX IF NOT EXISTS idx_proposal_demand ON "Proposal"(demandId);
-CREATE INDEX IF NOT EXISTS idx_feed_created ON "FeedPost"("createdAt" DESC);
-CREATE INDEX IF NOT EXISTS idx_transaction_created ON "Transaction"("createdAt" DESC);
-CREATE INDEX IF NOT EXISTS idx_notification_user ON "Notification"(userId, "read");
+CREATE INDEX idx_user_email ON "User"(email);
+CREATE INDEX idx_user_is_agent ON "User"(is_agent);
+CREATE INDEX idx_user_credit_score ON "User"(credit_score DESC);
+CREATE INDEX idx_user_cash ON "User"(cash DESC);
+CREATE INDEX idx_loan_user ON "Loan"(userId);
+CREATE INDEX idx_loan_status ON "Loan"(status);
+CREATE INDEX idx_asset_user ON "Asset"(userId);
+CREATE INDEX idx_shop_owner ON "Shop"(ownerId);
+CREATE INDEX idx_product_shop ON "Product"(shopId);
+CREATE INDEX idx_service_shop ON "Service"(shopId);
+CREATE INDEX idx_demand_user ON "Demand"(userId);
+CREATE INDEX idx_proposal_demand ON "Proposal"(demandId);
+CREATE INDEX idx_feed_created ON "FeedPost"("createdAt" DESC);
+CREATE INDEX idx_transaction_created ON "Transaction"("createdAt" DESC);
+CREATE INDEX idx_notification_user ON "Notification"(userId, "read");
 
 -- RLS désactivé
 ALTER TABLE "User" DISABLE ROW LEVEL SECURITY;
@@ -499,239 +424,153 @@ INSERT INTO "MarketPrice" (category, price, change_pct) VALUES
   ('luxe', 200000, 0)
 ON CONFLICT (category) DO NOTHING;
 
+-- IMPORTANT : Recharger le schéma PostgREST
+NOTIFY pgrst, 'reload schema';
+
+-- FIN PARTIE 1 : Exécuter maintenant la PARTIE 2 (données agents)
 `;
 
-  // === PARTIE 2: 300 AGENTS ===
-  sql += '-- ============================================================\n';
-  sql += '-- 300 AGENTS IA\n';
-  sql += '-- ============================================================\n\n';
+// ==================== PARTIE 2 : DONNÉES ====================
+let part2 = `-- ============================================================
+-- PARTIE 2 : SAMA ÉCONOMIE V2 — Insertion des 300 agents + données
+-- Exécuter APRÈS la Partie 1
+-- ============================================================
 
-  const agents = [];
-  const usedEmails = new Set();
+`;
 
-  for (let i = 0; i < 300; i++) {
-    const isFemale = Math.random() > 0.52;
-    const firstName = isFemale ? pick(FIRST_NAMES_F) : pick(FIRST_NAMES_M);
-    const lastName = pick(LAST_NAMES);
-    const name = `${firstName} ${lastName}`;
-    const loc = pick(LOCATIONS);
-
-    let email;
-    do { email = `${firstName.toLowerCase().replace(/\s/g,'')}.${lastName.toLowerCase()}${rand(1,999)}@agent.sama.sn`; } while (usedEmails.has(email));
-    usedEmails.add(email);
-
-    const r = Math.random();
-    const personality = r < 0.40 ? 'econome' : r < 0.65 ? 'depensier' : r < 0.85 ? 'stratege' : 'fou';
-    const cash = personality === 'econome' ? rand(100000,5000000) : personality === 'depensier' ? rand(0,8000000) : personality === 'stratege' ? rand(500000,10000000) : rand(0,12000000);
-    const creditScore = personality === 'econome' ? rand(700,1000) : personality === 'stratege' ? rand(650,950) : personality === 'depensier' ? rand(400,800) : rand(200,700);
-    const gamesPlayed = rand(1,20);
-    const gamesWon = personality === 'stratege' ? rand(1,gamesPlayed) : personality === 'econome' ? rand(0,Math.floor(gamesPlayed*0.7)) : rand(0,Math.floor(gamesPlayed*0.5));
-    const isBankrupt = personality === 'fou' && Math.random() < 0.15;
-
-    agents.push({
-      id: uuidv4(), name, email, loc, personality, cash, creditScore,
-      gamesPlayed, gamesWon, gamesLost: gamesPlayed - gamesWon,
-      isBankrupt, totalProfit: rand(0, personality==='stratege'?5000000:2000000),
-      totalSpent: rand(100000, personality==='depensier'?10000000:3000000),
-      totalDebt: rand(0, personality==='fou'?5000000:1000000),
-      profileViews: rand(0,500),
-    });
-  }
-
-  // Insert agents
-  sql += 'INSERT INTO "User" (id, name, email, cash, type, is_agent, agent_personality, avatar, location, bio, credit_score, total_profit, total_spent, total_debt, games_played, games_won, games_lost, is_bankrupt, profile_views, status) VALUES\n';
-  sql += agents.map(a => `  ('${a.id}', '${esc(a.name)}', '${a.email}', ${a.cash}, 'player', true, '${a.personality}', '/avatars/default.png', '${a.loc}', '${esc(pick(BIOS))}', ${a.creditScore}, ${a.totalProfit}, ${a.totalSpent}, ${a.totalDebt}, ${a.gamesPlayed}, ${a.gamesWon}, ${a.gamesLost}, ${a.isBankrupt}, ${a.profileViews}, 'active')`).join(',\n');
-  sql += ';\n\n';
-
-  // === PARTIE 3: BOUTIQUES ===
-  sql += '-- ============================================================\n-- BOUTIQUES, PRODUITS, SERVICES\n-- ============================================================\n\n';
-
-  const shops = [];
-  const products = [];
-  const services = [];
-
-  for (const agent of agents) {
-    if (Math.random() < 0.65) {
-      const shopId = uuidv4();
-      shops.push({ id: shopId, agentId: agent.id, name: `${pick(SHOP_NAMES)} - ${agent.name.split(' ')[1]}`.trim(), loc: agent.loc, agentName: agent.name });
-
-      for (const p of pickN(PRODUCTS, rand(2,6))) {
-        products.push({ id: uuidv4(), shopId, agentId: agent.id, name: p.name, cat: p.category, price: rand(p.pMin,p.pMax) });
-      }
-      for (const s of pickN(SERVICES, rand(1,4))) {
-        services.push({ id: uuidv4(), shopId, agentId: agent.id, name: s.name, cat: s.category, price: rand(s.pMin,s.pMax) });
-      }
-    }
-  }
-
-  sql += `INSERT INTO "Shop" (id, "ownerId", name, description, category, location, rating, review_count, sales_count, status) VALUES\n`;
-  sql += shops.map(s => `  ('${s.id}', '${s.agentId}', '${esc(s.name)}', 'Boutique de ${esc(s.agentName)} à ${s.loc}', '${pick(SHOP_CATEGORIES)}', '${s.loc}', ${randFloat(2.5,5)}, ${rand(0,50)}, ${rand(0,200)}, 'active')`).join(',\n');
-  sql += ';\n\n';
-
-  sql += `INSERT INTO "Product" (id, "shopId", "ownerId", name, description, category, price, stock, status) VALUES\n`;
-  sql += products.map(p => `  ('${p.id}', '${p.shopId}', '${p.agentId}', '${esc(p.name)}', '${esc(p.name)} de qualité', '${p.cat}', ${p.price}, ${rand(1,100)}, 'available')`).join(',\n');
-  sql += ';\n\n';
-
-  sql += `INSERT INTO "Service" (id, "shopId", "ownerId", name, description, category, price, availability) VALUES\n`;
-  sql += services.map(s => `  ('${s.id}', '${s.shopId}', '${s.agentId}', '${esc(s.name)}', 'Service professionnel ${esc(s.name)}', '${s.cat}', ${s.price}, '${Math.random()>0.15?'available':'unavailable'}')`).join(',\n');
-  sql += ';\n\n';
-
-  // === PARTIE 4: PRÊTS ===
-  sql += '-- ============================================================\n-- PRÊTS\n-- ============================================================\n\n';
-
-  const loans = [];
-  for (const agent of pickN(agents, 120)) {
-    const amount = rand(100000, 5000000);
-    const rate = randFloat(2.0, 5.0);
-    const totalDue = Math.round(amount * (1 + parseFloat(rate) / 100));
-    const months = rand(3, 24);
-    const monthly = Math.round(totalDue / months);
-    const r = Math.random();
-    let status, monthsRemaining, remaining;
-    if (r < 0.30) { status='paid'; monthsRemaining=0; remaining=0; }
-    else if (r < 0.40) { status='defaulted'; monthsRemaining=rand(1,months); remaining=rand(Math.round(totalDue*0.3),totalDue); }
-    else { monthsRemaining=rand(1,months); remaining=rand(Math.round(monthly*monthsRemaining),totalDue); status='active'; }
-    const autoApproved = Math.random() > 0.3;
-    loans.push({ id: uuidv4(), agentId: agent.id, amount, rate, totalDue, remaining, monthly, monthsRemaining, status, autoApproved });
-  }
-
-  sql += `INSERT INTO "Loan" (id, "userId", amount, interest_rate, total_due, remaining, monthly_payment, months_remaining, status, auto_approved, admin_approved) VALUES\n`;
-  sql += loans.map(l => `  ('${l.id}', '${l.agentId}', ${l.amount}, ${l.rate}, ${l.totalDue}, ${l.remaining}, ${l.monthly}, ${l.monthsRemaining}, '${l.status}', ${l.autoApproved}, ${l.autoApproved?'NULL':(Math.random()>0.3?'true':'false')})`).join(',\n');
-  sql += ';\n\n';
-
-  // === PARTIE 5: ACTIFS ===
-  sql += '-- ============================================================\n-- ACTIFS (PATRIMOINE)\n-- ============================================================\n\n';
-
-  const assets = [];
-  for (const agent of agents) {
-    let num = 0;
-    if (agent.personality === 'depensier' || agent.personality === 'fou') num = rand(1,5);
-    else if (agent.personality === 'stratege') num = rand(1,4);
-    else num = Math.random() < 0.4 ? rand(1,2) : 0;
-    for (const t of pickN(ASSET_TEMPLATES, num)) {
-      const pp = rand(t.pMin, t.pMax);
-      const cv = Math.round(pp * (0.8 + Math.random() * 0.4));
-      let details = '{}';
-      if (t.category === 'immobilier') details = `{"superficie":"${rand(50,500)}m2","pieces":${rand(1,8)}}`;
-      else if (t.category === 'vehicule') details = `{"annee":${rand(2005,2025)},"kilometrage":"${rand(5000,200000)}km"}`;
-      else if (t.category === 'or') details = `{"grammes":${pick([5,10,25,50,100])},"carat":${pick([18,21,22,24])}}`;
-      assets.push({ id: uuidv4(), agentId: agent.id, name: t.name, cat: t.category, pp, cv, details, status: Math.random()>0.05?'owned':'seized' });
-    }
-  }
-
-  sql += `INSERT INTO "Asset" (id, "userId", name, category, description, purchase_price, current_value, details, status) VALUES\n`;
-  sql += assets.map(a => `  ('${a.id}', '${a.agentId}', '${esc(a.name)}', '${a.cat}', '${esc(a.name)} - patrimoine', ${a.pp}, ${a.cv}, '${a.details}', '${a.status}')`).join(',\n');
-  sql += ';\n\n';
-
-  // === PARTIE 6: FEED ===
-  sql += '-- ============================================================\n-- FEED D\'ACTUALITÉS\n-- ============================================================\n\n';
-
-  const feedPosts = [];
-  for (const agent of pickN(agents, 80)) {
-    const ft = pick(FEED_TEMPLATES);
-    let desc;
-    switch (ft.type) {
-      case 'inscription': desc = 'Un nouvel entrepreneur rejoint la communauté !'; break;
-      case 'achat': desc = pick(['Achat effectué sur le marché.','Nouvel investissement.','Opération réussie.']); break;
-      case 'succes': desc = pick(['Projet rentable !','Objectif atteint !','Belle performance.']); break;
-      case 'pret': desc = 'Prêt approuvé pour une nouvelle activité.'; break;
-      case 'vente': desc = 'Bien vendu avec plus-value.'; break;
-      case 'faillite': desc = 'Difficultés à rembourser. Situation critique.'; break;
-      case 'challenge': desc = 'Qui sera le meilleur ? Relevez le défi !'; break;
-      case 'boutique': desc = 'Nouvelle boutique sur la plateforme !'; break;
-      default: desc = 'Activité sur la plateforme.';
-    }
-    feedPosts.push({ id: uuidv4(), agentId: agent.id, type: ft.type, title: ft.tf(agent.name), desc, likes: rand(0,50), comments: rand(0,20) });
-  }
-
-  sql += `INSERT INTO "FeedPost" (id, "userId", type, title, description, likes, comments) VALUES\n`;
-  sql += feedPosts.map(f => `  ('${f.id}', '${f.agentId}', '${f.type}', '${esc(f.title)}', '${esc(f.desc)}', ${f.likes}, ${f.comments})`).join(',\n');
-  sql += ';\n\n';
-
-  // === PARTIE 7: DEMANDES ===
-  sql += '-- ============================================================\n-- DEMANDES\n-- ============================================================\n\n';
-
-  const demands = [];
-  for (const agent of pickN(agents, 50)) {
-    demands.push({ id: uuidv4(), agentId: agent.id, title: pick(DEMAND_TITLES), cat: pick(['produit','service','emploi','partenariat']), budget: rand(50000,5000000), status: pick(['open','open','open','in_progress','closed']), resp: rand(0,15) });
-  }
-
-  sql += `INSERT INTO "Demand" (id, "userId", title, description, category, budget, status, responses_count) VALUES\n`;
-  sql += demands.map(d => `  ('${d.id}', '${d.agentId}', '${esc(d.title)}', 'Je recherche ce service/produit. Contactez-moi si intéressé.', '${d.cat}', ${d.budget}, '${d.status}', ${d.resp})`).join(',\n');
-  sql += ';\n\n';
-
-  // === PARTIE 8: PROPOSITIONS ===
-  sql += '-- ============================================================\n-- PROPOSITIONS\n-- ============================================================\n\n';
-
-  const proposals = [];
-  for (let i = 0; i < Math.min(30, demands.length); i++) {
-    const demand = demands[i];
-    for (const proposer of pickN(agents.filter(a => a.id !== demand.agentId), rand(1,4))) {
-      proposals.push({ id: uuidv4(), demandId: demand.id, agentId: proposer.id, price: rand(25000,3000000), status: pick(['pending','pending','accepted','rejected']) });
-    }
-  }
-
-  sql += `INSERT INTO "Proposal" (id, "demandId", "fromUserId", price, message, status) VALUES\n`;
-  sql += proposals.map(p => `  ('${p.id}', '${p.demandId}', '${p.agentId}', ${p.price}, 'Bonjour, je propose ce service à ce prix. Contactez-moi.', '${p.status}')`).join(',\n');
-  sql += ';\n\n';
-
-  // === PARTIE 9: COMMENTAIRES ===
-  sql += '-- ============================================================\n-- COMMENTAIRES\n-- ============================================================\n\n';
-
-  const comments = [];
-  for (const post of pickN(feedPosts, 60)) {
-    const commenter = pick(agents.filter(a => a.id !== post.agentId));
-    comments.push({ id: uuidv4(), postId: post.id, agentId: commenter.id, content: pick(COMMENTS) });
-  }
-
-  sql += `INSERT INTO "FeedComment" (id, "postId", "userId", content) VALUES\n`;
-  sql += comments.map(c => `  ('${c.id}', '${c.postId}', '${c.agentId}', '${esc(c.content)}')`).join(',\n');
-  sql += ';\n\n';
-
-  // === PARTIE 10: AVIS ===
-  sql += '-- ============================================================\n-- AVIS\n-- ============================================================\n\n';
-
-  const reviews = [];
-  for (let i = 0; i < 80; i++) {
-    const from = pick(agents);
-    const to = pick(agents.filter(a => a.id !== from.id));
-    reviews.push({ id: uuidv4(), fromId: from.id, toId: to.id, rating: rand(1,5), comment: pick(REVIEWS) });
-  }
-
-  sql += `INSERT INTO "Review" (id, "fromUserId", "toUserId", rating, comment) VALUES\n`;
-  sql += reviews.map(r => `  ('${r.id}', '${r.fromId}', '${r.toId}', ${r.rating}, '${esc(r.comment)}')`).join(',\n');
-  sql += ';\n\n';
-
-  // === PARTIE 11: TRANSACTIONS ===
-  sql += '-- ============================================================\n-- TRANSACTIONS\n-- ============================================================\n\n';
-
-  const transTypes = ['pret','remboursement','achat','vente','transfert','don'];
-  const transactions = [];
-  for (const agent of pickN(agents, 200)) {
-    for (let j = 0; j < rand(1,5); j++) {
-      const type = pick(transTypes);
-      const other = pick(agents.filter(a => a.id !== agent.id));
-      const amount = type==='pret'||type==='achat'?rand(50000,5000000):type==='remboursement'?rand(25000,500000):type==='don'?rand(5000,100000):rand(10000,1000000);
-      const desc = type==='pret'?'Prêt bancaire':type==='remboursement'?'Remboursement mensuel':type==='achat'?'Achat sur le marché':type==='vente'?'Vente de bien':type==='don'?'Don entre joueurs':'Transfert de fonds';
-      transactions.push({ id: uuidv4(), fromId: type==='vente'||type==='don'?agent.id:other.id, toId: type==='pret'||type==='remboursement'?agent.id:other.id, amount, type, desc });
-    }
-  }
-
-  sql += `INSERT INTO "Transaction" (id, "fromUserId", "toUserId", amount, type, description) VALUES\n`;
-  sql += transactions.map(t => `  ('${t.id}', '${t.fromId}', '${t.toId}', ${t.amount}, '${t.type}', '${esc(t.desc)}')`).join(',\n');
-  sql += ';\n\n';
-
-  // === FIN ===
-  sql += '-- ============================================================\n';
-  sql += `-- FIN : ${agents.length} agents, ${shops.length} boutiques, ${products.length} produits, ${services.length} services\n`;
-  sql += `-- ${loans.length} prêts, ${assets.length} actifs, ${feedPosts.length} posts, ${demands.length} demandes\n`;
-  sql += `-- ${proposals.length} propositions, ${comments.length} commentaires, ${reviews.length} avis, ${transactions.length} transactions\n`;
-  sql += '-- ============================================================\n';
-
-  return sql;
+// Generate agents
+const agents = [];
+const usedEmails = new Set();
+for (let i = 0; i < 300; i++) {
+  const isF = Math.random() > 0.52;
+  const fn = isF ? pick(FF) : pick(FM);
+  const ln = pick(LN);
+  const name = `${fn} ${ln}`;
+  const loc = pick(LOC);
+  let email;
+  do { email = `${fn.toLowerCase().replace(/\s/g,'')}.${ln.toLowerCase()}${rand(1,999)}@agent.sama.sn`; } while (usedEmails.has(email));
+  usedEmails.add(email);
+  const r = Math.random();
+  const pers = r < 0.40 ? 'econome' : r < 0.65 ? 'depensier' : r < 0.85 ? 'stratege' : 'fou';
+  const cash = pers==='econome'?rand(100000,5000000):pers==='depensier'?rand(0,8000000):pers==='stratege'?rand(500000,10000000):rand(0,12000000);
+  const cs = pers==='econome'?rand(700,1000):pers==='stratege'?rand(650,950):pers==='depensier'?rand(400,800):rand(200,700);
+  const gp = rand(1,20);
+  const gw = pers==='stratege'?rand(1,gp):pers==='econome'?rand(0,Math.floor(gp*0.7)):rand(0,Math.floor(gp*0.5));
+  agents.push({id:uuidv4(),name,email,loc,pers,cash,cs,gp,gw,gl:gp-gw,bank:pers==='fou'&&Math.random()<0.15,tp:rand(0,pers==='stratege'?5000000:2000000),ts:rand(100000,pers==='depensier'?10000000:3000000),td:rand(0,pers==='fou'?5000000:1000000),pv:rand(0,500)});
 }
 
-const sql = generateSQL();
-const outPath = path.join(__dirname, '..', 'download', 'sama-economie-full.sql');
-fs.writeFileSync(outPath, sql, 'utf8');
-console.log(`✅ SQL généré : ${outPath} (${(sql.length / 1024).toFixed(0)} Ko)`);
+// Insert agents
+part2 += 'INSERT INTO "User" (id, name, email, cash, type, is_agent, agent_personality, avatar, location, bio, credit_score, total_profit, total_spent, total_debt, games_played, games_won, games_lost, is_bankrupt, profile_views, status) VALUES\n';
+part2 += agents.map(a=>`('${a.id}','${esc(a.name)}','${a.email}',${a.cash},'player',true,'${a.pers}','/avatars/default.png','${a.loc}','${esc(pick(BIO))}',${a.cs},${a.tp},${a.ts},${a.td},${a.gp},${a.gw},${a.gl},${a.bank},${a.pv},'active')`).join(',\n');
+part2 += ';\n\n';
+
+// Shops, Products, Services
+const shops=[],products=[],services=[];
+for (const ag of agents) {
+  if (Math.random() < 0.65) {
+    const sid = uuidv4();
+    shops.push({id:sid,aid:ag.id,name:`${pick(SN)} - ${ag.name.split(' ')[1]}`.trim(),loc:ag.loc,an:ag.name});
+    for (const p of pickN(PROD,rand(2,6))) products.push({id:uuidv4(),sid,aid:ag.id,name:p.n,cat:p.c,price:rand(p.a,p.b)});
+    for (const s of pickN(SERV,rand(1,4))) services.push({id:uuidv4(),sid,aid:ag.id,name:s.n,cat:s.c,price:rand(s.a,s.b)});
+  }
+}
+
+part2 += `INSERT INTO "Shop" (id, "ownerId", name, description, category, location, rating, review_count, sales_count, status) VALUES\n`;
+part2 += shops.map(s=>`('${s.id}','${s.aid}','${esc(s.name)}','Boutique de ${esc(s.an)} à ${s.loc}','${pick(SC)}','${s.loc}',${randFloat(2.5,5)},${rand(0,50)},${rand(0,200)},'active')`).join(',\n');
+part2 += ';\n\n';
+
+part2 += `INSERT INTO "Product" (id, "shopId", "ownerId", name, description, category, price, stock, status) VALUES\n`;
+part2 += products.map(p=>`('${p.id}','${p.sid}','${p.aid}','${esc(p.name)}','${esc(p.name)} de qualité','${p.cat}',${p.price},${rand(1,100)},'available')`).join(',\n');
+part2 += ';\n\n';
+
+part2 += `INSERT INTO "Service" (id, "shopId", "ownerId", name, description, category, price, availability) VALUES\n`;
+part2 += services.map(s=>`('${s.id}','${s.sid}','${s.aid}','${esc(s.name)}','Service ${esc(s.name)}','${s.cat}',${s.price},'${Math.random()>0.15?'available':'unavailable'}')`).join(',\n');
+part2 += ';\n\n';
+
+// Loans
+const loans=[];
+for (const ag of pickN(agents,120)) {
+  const amt=rand(100000,5000000),rate=randFloat(2.0,5.0),td=Math.round(amt*(1+parseFloat(rate)/100)),mo=rand(3,24),mp=Math.round(td/mo);
+  const r=Math.random();let st,mr,rm;
+  if(r<0.3){st='paid';mr=0;rm=0}else if(r<0.4){st='defaulted';mr=rand(1,mo);rm=rand(Math.round(td*0.3),td)}else{st='active';mr=rand(1,mo);rm=rand(Math.round(mp*mr),td)}
+  const ap=Math.random()>0.3;
+  loans.push({id:uuidv4(),aid:ag.id,amt,rate,td,rm,mp,mr,st,ap});
+}
+part2 += `INSERT INTO "Loan" (id, "userId", amount, interest_rate, total_due, remaining, monthly_payment, months_remaining, status, auto_approved, admin_approved) VALUES\n`;
+part2 += loans.map(l=>`('${l.id}','${l.aid}',${l.amt},${l.rate},${l.td},${l.rm},${l.mp},${l.mr},'${l.st}',${l.ap},${l.ap?'NULL':(Math.random()>0.3?'true':'false')})`).join(',\n');
+part2 += ';\n\n';
+
+// Assets
+const assets=[];
+for (const ag of agents) {
+  let num=ag.pers==='depensier'||ag.pers==='fou'?rand(1,5):ag.pers==='stratege'?rand(1,4):Math.random()<0.4?rand(1,2):0;
+  for (const t of pickN(ASSETS,num)) {
+    const pp=rand(t.a,t.b),cv=Math.round(pp*(0.8+Math.random()*0.4));
+    let d='{}';
+    if(t.c==='immobilier')d=`{"superficie":"${rand(50,500)}m2","pieces":${rand(1,8)}}`;
+    else if(t.c==='vehicule')d=`{"annee":${rand(2005,2025)},"kilometrage":"${rand(5000,200000)}km"}`;
+    else if(t.c==='or')d=`{"grammes":${pick([5,10,25,50,100])},"carat":${pick([18,21,22,24])}}`;
+    assets.push({id:uuidv4(),aid:ag.id,n:t.n,c:t.c,pp,cv,d,st:Math.random()>0.05?'owned':'seized'});
+  }
+}
+part2 += `INSERT INTO "Asset" (id, "userId", name, category, description, purchase_price, current_value, details, status) VALUES\n`;
+part2 += assets.map(a=>`('${a.id}','${a.aid}','${esc(a.n)}','${a.c}','${esc(a.n)} - patrimoine',${a.pp},${a.cv},'${a.d}','${a.st}')`).join(',\n');
+part2 += ';\n\n';
+
+// Feed posts
+const feed=[];
+for (const ag of pickN(agents,80)) {
+  const ft=pick(FT);let desc;
+  switch(ft.t){case'inscription':desc='Un nouvel entrepreneur rejoint la communauté !';break;case'achat':desc=pick(['Achat effectué sur le marché.','Nouvel investissement.','Opération réussie.']);break;case'succes':desc=pick(['Projet rentable !','Objectif atteint !','Belle performance.']);break;case'pret':desc='Prêt approuvé pour une nouvelle activité.';break;case'vente':desc='Bien vendu avec plus-value.';break;case'faillite':desc='Difficultés à rembourser. Situation critique.';break;case'challenge':desc='Qui sera le meilleur ?';break;case'boutique':desc='Nouvelle boutique ouverte !';break;default:desc='Activité sur la plateforme.';}
+  feed.push({id:uuidv4(),aid:ag.id,t:ft.t,title:ft.f(ag.name),desc,lk:rand(0,50),cm:rand(0,20)});
+}
+part2 += `INSERT INTO "FeedPost" (id, "userId", type, title, description, likes, comments) VALUES\n`;
+part2 += feed.map(f=>`('${f.id}','${f.aid}','${f.t}','${esc(f.title)}','${esc(f.desc)}',${f.lk},${f.cm})`).join(',\n');
+part2 += ';\n\n';
+
+// Demands
+const demands=[];
+for (const ag of pickN(agents,50)) demands.push({id:uuidv4(),aid:ag.id,title:pick(DT),cat:pick(['produit','service','emploi','partenariat']),bud:rand(50000,5000000),st:pick(['open','open','open','in_progress','closed']),resp:rand(0,15)});
+part2 += `INSERT INTO "Demand" (id, "userId", title, description, category, budget, status, responses_count) VALUES\n`;
+part2 += demands.map(d=>`('${d.id}','${d.aid}','${esc(d.title)}','Je recherche ce service. Contactez-moi si intéressé.','${d.cat}',${d.bud},'${d.st}',${d.resp})`).join(',\n');
+part2 += ';\n\n';
+
+// Proposals
+const props=[];
+for(let i=0;i<Math.min(30,demands.length);i++){const dm=demands[i];for(const pr of pickN(agents.filter(a=>a.id!==dm.aid),rand(1,4)))props.push({id:uuidv4(),did:dm.id,aid:pr.id,price:rand(25000,3000000),st:pick(['pending','pending','accepted','rejected'])})}
+part2 += `INSERT INTO "Proposal" (id, "demandId", "fromUserId", price, message, status) VALUES\n`;
+part2 += props.map(p=>`('${p.id}','${p.did}','${p.aid}',${p.price},'Je propose ce service à ce prix. Contactez-moi.','${p.st}')`).join(',\n');
+part2 += ';\n\n';
+
+// Comments
+const comms=[];
+for(const post of pickN(feed,60)){const c=pick(agents.filter(a=>a.id!==post.aid));comms.push({id:uuidv4(),pid:post.id,aid:c.id,txt:pick(COM)})}
+part2 += `INSERT INTO "FeedComment" (id, "postId", "userId", content) VALUES\n`;
+part2 += comms.map(c=>`('${c.id}','${c.pid}','${c.aid}','${esc(c.txt)}')`).join(',\n');
+part2 += ';\n\n';
+
+// Reviews
+const revs=[];
+for(let i=0;i<80;i++){const fr=pick(agents),to=pick(agents.filter(a=>a.id!==fr.id));revs.push({id:uuidv4(),fid:fr.id,tid:to.id,rat:rand(1,5),txt:pick(REV)})}
+part2 += `INSERT INTO "Review" (id, "fromUserId", "toUserId", rating, comment) VALUES\n`;
+part2 += revs.map(r=>`('${r.id}','${r.fid}','${r.tid}',${r.rat},'${esc(r.txt)}')`).join(',\n');
+part2 += ';\n\n';
+
+// Transactions
+const trTypes=['pret','remboursement','achat','vente','transfert','don'];
+const trans=[];
+for(const ag of pickN(agents,200)){for(let j=0;j<rand(1,5);j++){const tp=pick(trTypes),ot=pick(agents.filter(a=>a.id!==ag.id)),amt=tp==='pret'||tp==='achat'?rand(50000,5000000):tp==='remboursement'?rand(25000,500000):tp==='don'?rand(5000,100000):rand(10000,1000000);const desc=tp==='pret'?'Prêt bancaire':tp==='remboursement'?'Remboursement mensuel':tp==='achat'?'Achat marché':tp==='vente'?'Vente de bien':tp==='don'?'Don entre joueurs':'Transfert de fonds';trans.push({id:uuidv4(),fid:tp==='vente'||tp==='don'?ag.id:ot.id,tid:tp==='pret'||tp==='remboursement'?ag.id:ot.id,amt,tp,desc})}}
+part2 += `INSERT INTO "Transaction" (id, "fromUserId", "toUserId", amount, type, description) VALUES\n`;
+part2 += trans.map(t=>`('${t.id}','${t.fid}','${t.tid}',${t.amt},'${t.tp}','${esc(t.desc)}')`).join(',\n');
+part2 += ';\n\n';
+
+part2 += `-- FIN : ${agents.length} agents, ${shops.length} boutiques, ${products.length} produits, ${services.length} services, ${loans.length} prêts, ${assets.length} actifs, ${feed.length} posts, ${demands.length} demandes, ${props.length} propositions, ${comms.length} commentaires, ${revs.length} avis, ${trans.length} transactions\n`;
+
+// Write files
+const dl = path.join(__dirname, '..', 'download');
+fs.writeFileSync(path.join(dl, 'sama-schema.sql'), part1, 'utf8');
+fs.writeFileSync(path.join(dl, 'sama-data.sql'), part2, 'utf8');
+console.log(`✅ Partie 1 (Schema): ${(part1.length/1024).toFixed(0)} Ko`);
+console.log(`✅ Partie 2 (Données): ${(part2.length/1024).toFixed(0)} Ko`);
+console.log(`   → ${agents.length} agents, ${shops.length} boutiques, ${products.length} produits`);
+console.log(`   → ${services.length} services, ${loans.length} prêts, ${assets.length} actifs`);
