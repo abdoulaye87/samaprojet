@@ -18,7 +18,7 @@ export async function GET(req: Request) {
 
     // Récupérer toutes les businesses
     const { data: businesses, error: bizError } = await supabase
-      .from('"Business"')
+      .from('Business')
       .select('*')
       .order('createdAt', { ascending: true })
 
@@ -36,7 +36,7 @@ export async function GET(req: Request) {
 
     if (ownerIds.length > 0) {
       const { data: owners } = await supabase
-        .from('"User"')
+        .from('User')
         .select('id, name, type')
         .in('id', ownerIds)
       for (const o of owners || []) {

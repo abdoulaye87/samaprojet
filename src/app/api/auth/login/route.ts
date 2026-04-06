@@ -23,7 +23,7 @@ export async function POST(req: NextRequest) {
       if (error.message.includes('Email not confirmed') || error.message.includes('email not confirmed')) {
         // Récupérer l'utilisateur par email pour obtenir son ID
         const { data: userList } = await supabase
-          .from('"User"')
+          .from('User')
           .select('id')
           .eq('email', email)
           .limit(1)
@@ -76,14 +76,14 @@ async function buildLoginResponse(
 ) {
   // Récupérer ou créer le profil dans Supabase
   const { data: user } = await supabase
-    .from('"User"')
+    .from('User')
     .select('*')
     .eq('id', userId)
     .single()
 
   if (!user) {
     const name = (authUser.user_metadata?.name as string) || email.split('@')[0]
-    await supabase.from('"User"').insert({
+    await supabase.from('User').insert({
       id: userId,
       name,
       email,

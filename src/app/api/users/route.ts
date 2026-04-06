@@ -21,8 +21,8 @@ export async function GET(req: NextRequest) {
     }
 
     const { data: users } = await supabase
-      .from('"User"')
-      .select('*, ownedBusinesses: "Business"(id)')
+      .from('User')
+      .select('*, ownedBusinesses:Business(id)')
       .order('createdAt', { ascending: true })
 
     // Transformer pour inclure les counts
@@ -66,7 +66,7 @@ export async function POST(req: NextRequest) {
     }
 
     const { data: newUser, error } = await supabase
-      .from('"User"')
+      .from('User')
       .insert({
         name,
         email: null,

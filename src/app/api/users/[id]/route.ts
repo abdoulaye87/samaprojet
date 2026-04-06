@@ -27,7 +27,7 @@ export async function PATCH(
     const { name, cash, type } = await req.json()
 
     const { data: existingUser } = await supabase
-      .from('"User"')
+      .from('User')
       .select('*')
       .eq('id', id)
       .single()
@@ -45,7 +45,7 @@ export async function PATCH(
     if (type !== undefined) updateData.type = type
 
     const { data: updatedUser, error } = await supabase
-      .from('"User"')
+      .from('User')
       .update(updateData)
       .eq('id', id)
       .select()

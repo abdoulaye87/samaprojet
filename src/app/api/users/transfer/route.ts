@@ -31,14 +31,14 @@ export async function POST(req: NextRequest) {
 
     // Récupérer l'expéditeur
     const { data: fromUser } = await supabase
-      .from('"User"')
+      .from('User')
       .select('*')
       .eq('id', user.id)
       .single()
 
     // Récupérer le destinataire
     const { data: toUser } = await supabase
-      .from('"User"')
+      .from('User')
       .select('*')
       .eq('id', toUserId)
       .single()
@@ -66,7 +66,7 @@ export async function POST(req: NextRequest) {
 
     // Décrémenter l'expéditeur
     const { error: debitError } = await supabase
-      .from('"User"')
+      .from('User')
       .update({ cash: fromUser.cash - amount })
       .eq('id', user.id)
 
@@ -80,7 +80,7 @@ export async function POST(req: NextRequest) {
 
     // Incrémenter le destinataire
     const { error: creditError } = await supabase
-      .from('"User"')
+      .from('User')
       .update({ cash: toUser.cash + amount })
       .eq('id', toUserId)
 
@@ -88,7 +88,7 @@ export async function POST(req: NextRequest) {
       console.error('Credit error:', creditError.message)
       // Tenter de rembourser l'expéditeur en cas d'erreur
       await supabase
-        .from('"User"')
+        .from('User')
         .update({ cash: fromUser.cash })
         .eq('id', user.id)
       return NextResponse.json(
@@ -99,7 +99,7 @@ export async function POST(req: NextRequest) {
 
     // Créer l'enregistrement de transaction
     const { data: transaction, error: txError } = await supabase
-      .from('"Transaction"')
+      .from('Transaction')
       .insert({
         fromUserId: user.id,
         toUserId,

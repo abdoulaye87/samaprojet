@@ -26,14 +26,14 @@ export async function GET(req: NextRequest) {
 
     // Récupérer le profil
     const { data: profile } = await supabase
-      .from('"User"')
+      .from('User')
       .select('*')
       .eq('id', userId)
       .single()
 
     if (!profile) {
       const name = data.user.user_metadata?.name || data.user.email?.split('@')[0] || 'Utilisateur'
-      await supabase.from('"User"').insert({
+      await supabase.from('User').insert({
         id: userId,
         name,
         email: data.user.email,
@@ -57,13 +57,13 @@ export async function GET(req: NextRequest) {
 
     // Récupérer les businesses
     const { data: businesses } = await supabase
-      .from('"Business"')
+      .from('Business')
       .select('*')
       .eq('ownerId', userId)
 
     // Récupérer toutes les transactions liées à cet utilisateur
     const { data: transactions } = await supabase
-      .from('"Transaction"')
+      .from('Transaction')
       .select('*')
       .or(`fromUserId.eq.${userId},toUserId.eq.${userId}`)
       .order('createdAt', { ascending: false })
@@ -76,7 +76,7 @@ export async function GET(req: NextRequest) {
     const userMap: Record<string, string> = {}
     if (userIds.length > 0) {
       const { data: users } = await supabase
-        .from('"User"')
+        .from('User')
         .select('id, name')
         .in('id', userIds)
       for (const u of users || []) {

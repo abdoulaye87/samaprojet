@@ -21,7 +21,7 @@ export async function GET(req: NextRequest) {
     }
 
     const { data: transactions } = await supabase
-      .from('"Transaction"')
+      .from('Transaction')
       .select('*')
       .order('createdAt', { ascending: false })
 
@@ -32,7 +32,7 @@ export async function GET(req: NextRequest) {
     const userMap: Record<string, string> = {}
     if (userIds.length > 0) {
       const { data: users } = await supabase
-        .from('"User"')
+        .from('User')
         .select('id, name')
         .in('id', userIds)
       for (const u of users || []) {
@@ -82,13 +82,13 @@ export async function POST(req: NextRequest) {
     }
 
     const { data: fromUser } = await supabase
-      .from('"User"')
+      .from('User')
       .select('*')
       .eq('id', user.id)
       .single()
 
     const { data: toUser } = await supabase
-      .from('"User"')
+      .from('User')
       .select('*')
       .eq('id', toUserId)
       .single()
@@ -134,7 +134,7 @@ export async function POST(req: NextRequest) {
 
     // Mettre à jour l'expéditeur
     const { error: fromError } = await supabase
-      .from('"User"')
+      .from('User')
       .update({ cash: newFromCash })
       .eq('id', user.id)
 
@@ -148,7 +148,7 @@ export async function POST(req: NextRequest) {
 
     // Mettre à jour le destinataire
     const { error: toError } = await supabase
-      .from('"User"')
+      .from('User')
       .update({ cash: newToCash })
       .eq('id', toUserId)
 
@@ -156,7 +156,7 @@ export async function POST(req: NextRequest) {
       console.error('Update toUser error:', toError.message)
       // Rembourser l'expéditeur
       await supabase
-        .from('"User"')
+        .from('User')
         .update({ cash: fromUser.cash })
         .eq('id', user.id)
       return NextResponse.json(
@@ -167,7 +167,7 @@ export async function POST(req: NextRequest) {
 
     // Créer l'enregistrement de transaction
     const { data: transaction, error: txError } = await supabase
-      .from('"Transaction"')
+      .from('Transaction')
       .insert({
         fromUserId: user.id,
         toUserId,

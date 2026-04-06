@@ -22,7 +22,7 @@ export async function GET(
     const { id } = await params
 
     const { data: business, error: bizError } = await supabase
-      .from('"Business"')
+      .from('Business')
       .select('*')
       .eq('id', id)
       .single()
@@ -36,7 +36,7 @@ export async function GET(
 
     // Récupérer les infos du propriétaire
     const { data: owner } = await supabase
-      .from('"User"')
+      .from('User')
       .select('id, name, type, email')
       .eq('id', business.ownerId)
       .single()

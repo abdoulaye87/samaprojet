@@ -49,7 +49,7 @@ export async function POST(req: NextRequest) {
     }
 
     // Créer le profil dans Supabase
-    await supabase.from('"User"').upsert(
+    await supabase.from('User').upsert(
       {
         id: authData.user.id,
         name,

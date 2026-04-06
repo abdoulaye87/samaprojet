@@ -35,7 +35,7 @@ export async function POST(
 
     // Vérifier que l'utilisateur existe
     const { data: owner } = await supabase
-      .from('"User"')
+      .from('User')
       .select('id')
       .eq('id', id)
       .single()
@@ -48,7 +48,7 @@ export async function POST(
     }
 
     const { data: business, error } = await supabase
-      .from('"Business"')
+      .from('Business')
       .insert({
         ownerId: id,
         name,
