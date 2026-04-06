@@ -4,9 +4,19 @@
 -- ============================================
 
 -- ============================================
+-- NETTOYAGE — Supprime les tables existantes
+-- ============================================
+DROP TABLE IF EXISTS logs CASCADE;
+DROP TABLE IF EXISTS transactions CASCADE;
+DROP TABLE IF EXISTS loans CASCADE;
+DROP TABLE IF EXISTS market CASCADE;
+DROP TABLE IF EXISTS economy CASCADE;
+DROP TABLE IF EXISTS agents CASCADE;
+
+-- ============================================
 -- TABLE: agents
 -- ============================================
-CREATE TABLE IF NOT EXISTS agents (
+CREATE TABLE agents (
   id               SERIAL PRIMARY KEY,
   prenom           TEXT NOT NULL,
   balance          NUMERIC(15, 2) NOT NULL DEFAULT 1000.00,
@@ -18,7 +28,7 @@ CREATE TABLE IF NOT EXISTS agents (
 -- ============================================
 -- TABLE: transactions
 -- ============================================
-CREATE TABLE IF NOT EXISTS transactions (
+CREATE TABLE transactions (
   id          SERIAL PRIMARY KEY,
   agent_id    INTEGER NOT NULL,
   type        TEXT NOT NULL,
@@ -33,7 +43,7 @@ CREATE TABLE IF NOT EXISTS transactions (
 -- ============================================
 -- TABLE: loans
 -- ============================================
-CREATE TABLE IF NOT EXISTS loans (
+CREATE TABLE loans (
   id           SERIAL PRIMARY KEY,
   agent_id     INTEGER NOT NULL,
   montant      NUMERIC(15, 2) NOT NULL,
@@ -48,7 +58,7 @@ CREATE TABLE IF NOT EXISTS loans (
 -- ============================================
 -- TABLE: market
 -- ============================================
-CREATE TABLE IF NOT EXISTS market (
+CREATE TABLE market (
   id         SERIAL PRIMARY KEY,
   produit    TEXT NOT NULL UNIQUE,
   prix       NUMERIC(15, 2) NOT NULL,
@@ -59,7 +69,7 @@ CREATE TABLE IF NOT EXISTS market (
 -- ============================================
 -- TABLE: economy
 -- ============================================
-CREATE TABLE IF NOT EXISTS economy (
+CREATE TABLE economy (
   id              INTEGER PRIMARY KEY DEFAULT 1 CHECK (id = 1),
   periode         INTEGER NOT NULL DEFAULT 1,
   inflation_cumul NUMERIC(10, 4) NOT NULL DEFAULT 0.00,
@@ -70,7 +80,7 @@ CREATE TABLE IF NOT EXISTS economy (
 -- ============================================
 -- TABLE: logs
 -- ============================================
-CREATE TABLE IF NOT EXISTS logs (
+CREATE TABLE logs (
   id         SERIAL PRIMARY KEY,
   message    TEXT NOT NULL,
   type       TEXT NOT NULL DEFAULT 'info',
