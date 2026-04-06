@@ -15,7 +15,7 @@ DROP TABLE IF EXISTS "Agent" CASCADE;
 -- ============================================================
 
 CREATE TABLE IF NOT EXISTS "User" (
-  id         TEXT PRIMARY KEY DEFAULT gen_random_uuid(),
+  id         UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   name       TEXT NOT NULL,
   email      TEXT UNIQUE,
   cash       DOUBLE PRECISION NOT NULL DEFAULT 5000,
@@ -24,8 +24,8 @@ CREATE TABLE IF NOT EXISTS "User" (
 );
 
 CREATE TABLE IF NOT EXISTS "Business" (
-  id         TEXT PRIMARY KEY DEFAULT gen_random_uuid(),
-  "ownerId"  TEXT NOT NULL REFERENCES "User"(id) ON DELETE CASCADE,
+  id         UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  "ownerId"  UUID NOT NULL REFERENCES "User"(id) ON DELETE CASCADE,
   name       TEXT NOT NULL,
   revenue    DOUBLE PRECISION NOT NULL,
   cost       DOUBLE PRECISION NOT NULL,
@@ -33,9 +33,9 @@ CREATE TABLE IF NOT EXISTS "Business" (
 );
 
 CREATE TABLE IF NOT EXISTS "Transaction" (
-  id          TEXT PRIMARY KEY DEFAULT gen_random_uuid(),
-  "fromUserId" TEXT NOT NULL REFERENCES "User"(id) ON DELETE CASCADE,
-  "toUserId"   TEXT NOT NULL REFERENCES "User"(id) ON DELETE CASCADE,
+  id          UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  "fromUserId" UUID NOT NULL REFERENCES "User"(id) ON DELETE CASCADE,
+  "toUserId"   UUID NOT NULL REFERENCES "User"(id) ON DELETE CASCADE,
   amount      DOUBLE PRECISION NOT NULL,
   type        TEXT NOT NULL,
   "createdAt"  TIMESTAMP NOT NULL DEFAULT now()
@@ -78,13 +78,13 @@ CREATE TRIGGER on_auth_user_created
 -- Seed: 2 agent accounts with businesses
 -- ============================================================
 INSERT INTO "User" (id, name, email, cash, type) VALUES
-  ('agent-boutique-central', 'Boutique Central', NULL, 50000, 'agent'),
-  ('agent-marche-fresh', 'Marché Fresh', NULL, 30000, 'agent')
+  ('a0000000-0000-0000-0000-000000000001', 'Boutique Central', NULL, 50000, 'agent'),
+  ('a0000000-0000-0000-0000-000000000002', 'Marché Fresh', NULL, 30000, 'agent')
 ON CONFLICT (id) DO NOTHING;
 
 INSERT INTO "Business" (id, "ownerId", name, revenue, cost) VALUES
-  ('biz-boutique-central', 'agent-boutique-central', 'Boutique Central', 5000, 2000),
-  ('biz-marche-fresh', 'agent-marche-fresh', 'Marché Fresh', 3000, 1200)
+  ('b0000000-0000-0000-0000-000000000001', 'a0000000-0000-0000-0000-000000000001', 'Boutique Central', 5000, 2000),
+  ('b0000000-0000-0000-0000-000000000002', 'a0000000-0000-0000-0000-000000000002', 'Marché Fresh', 3000, 1200)
 ON CONFLICT (id) DO NOTHING;
 
 -- ============================================================
@@ -100,7 +100,7 @@ CREATE POLICY "Users readable by authenticated users" ON "User"
 
 -- Users: authenticated users can update their own profile
 CREATE POLICY "Users can update own profile" ON "User"
-  FOR UPDATE USING (auth.uid() = id);
+  FOR UPDATE USING (auth.uid()::text = id::text);
 
 -- Businesses: anyone authenticated can read all businesses
 CREATE POLICY "Businesses readable by authenticated users" ON "Business"
