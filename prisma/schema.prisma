@@ -1,0 +1,63 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+model Agent {
+  id                Int       @id @default(autoincrement())
+  prenom            String
+  balance           Float     @default(1000.00)
+  dette             Float     @default(0.00)
+  investissementTotal Float   @default(0.00)
+  createdAt         DateTime  @default(now())
+  transactions      Transaction[]
+  loans             Loan[]
+}
+
+model Transaction {
+  id          Int      @id @default(autoincrement())
+  agentId     Int
+  type        String   // achat, vente, pret, remboursement, depot, retrait, crash, inflation
+  montant     Float
+  description String?
+  createdAt   DateTime @default(now())
+  agent       Agent    @relation(fields: [agentId], references: [id], onDelete: Cascade)
+}
+
+model Loan {
+  id          Int     @id @default(autoincrement())
+  agentId     Int
+  montant     Float
+  tauxInteret Float   @default(0.02)
+  statut      String  @default("en cours") // en cours, remboursé
+  createdAt   DateTime @default(now())
+  agent       Agent   @relation(fields: [agentId], references: [id], onDelete: Cascade)
+}
+
+model MarketItem {
+  id        Int      @id @default(autoincrement())
+  produit   String   @unique
+  prix      Float
+  prixBase  Float
+  updatedAt DateTime @default(now())
+}
+
+model Economy {
+  id              Int     @id @default(1)
+  periode         Int     @default(1)
+  inflationCumul  Float   @default(0.00)
+  inflationRate   Float   @default(0.02)
+  updatedAt       DateTime @default(now())
+}
+
+model EventLog {
+  id        Int      @id @default(autoincrement())
+  message   String
+  type      String   @default("info")
+  periode   Int      @default(1)
+  createdAt DateTime @default(now())
+}
