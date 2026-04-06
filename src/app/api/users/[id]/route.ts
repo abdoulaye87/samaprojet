@@ -1,6 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { supabase } from '@/lib/supabase-server'
-import { db } from '@/lib/db'
 
 async function authenticate(req: NextRequest) {
   const authHeader = req.headers.get('Authorization')
@@ -27,7 +26,12 @@ export async function PATCH(
     const { id } = await params
     const { name, cash, type } = await req.json()
 
-    const existingUser = await db.user.findUnique({ where: { id } })
+    const { data: existingUser } = await supabase
+      .from('"User"')
+      .select('*')
+      .eq('id', id)
+      .single()
+
     if (!existingUser) {
       return NextResponse.json(
         { error: 'Utilisateur non trouvé' },
@@ -35,14 +39,25 @@ export async function PATCH(
       )
     }
 
-    const updatedUser = await db.user.update({
-      where: { id },
-      data: {
-        ...(name !== undefined && { name }),
-        ...(cash !== undefined && { cash }),
-        ...(type !== undefined && { type }),
-      },
-    })
+    const updateData: Record<string, unknown> = {}
+    if (name !== undefined) updateData.name = name
+    if (cash !== undefined) updateData.cash = cash
+    if (type !== undefined) updateData.type = type
+
+    const { data: updatedUser, error } = await supabase
+      .from('"User"')
+      .update(updateData)
+      .eq('id', id)
+      .select()
+      .single()
+
+    if (error) {
+      console.error('Update user error:', error.message)
+      return NextResponse.json(
+        { error: 'Erreur lors de la mise à jour' },
+        { status: 500 }
+      )
+    }
 
     return NextResponse.json({ user: updatedUser })
   } catch (error) {

@@ -1,6 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { supabase } from '@/lib/supabase-server'
-import { db } from '@/lib/db'
 
 async function authenticate(req: NextRequest) {
   const authHeader = req.headers.get('Authorization')
@@ -21,16 +20,25 @@ export async function GET(req: NextRequest) {
       return NextResponse.json({ error: 'Non autorisé' }, { status: 401 })
     }
 
-    const users = await db.user.findMany({
-      include: {
-        _count: {
-          select: { ownedBusinesses: true, businessesSent: true, businessesReceived: true },
-        },
-      },
-      orderBy: { createdAt: 'asc' },
-    })
+    const { data: users } = await supabase
+      .from('"User"')
+      .select('*, ownedBusinesses: "Business"(id)')
+      .order('createdAt', { ascending: true })
 
-    return NextResponse.json({ users })
+    // Transformer pour inclure les counts
+    const usersWithCounts = (users || []).map(u => ({
+      ...u,
+      _count: {
+        ownedBusinesses: (u.ownedBusinesses as unknown[])?.length || 0,
+        businessesSent: 0,
+        businessesReceived: 0,
+      },
+    }))
+
+    // Supprimer le champ ownedBusinesses brut du payload final
+    const cleaned = usersWithCounts.map(({ ownedBusinesses, ...rest }) => rest)
+
+    return NextResponse.json({ users: cleaned })
   } catch (error) {
     console.error('List users error:', error)
     return NextResponse.json(
@@ -57,20 +65,30 @@ export async function POST(req: NextRequest) {
       )
     }
 
-    const newUser = await db.user.create({
-      data: {
+    const { data: newUser, error } = await supabase
+      .from('"User"')
+      .insert({
         name,
         email: null,
         cash: cash ?? 5000,
         type: type ?? 'agent',
-      },
-    })
+      })
+      .select()
+      .single()
+
+    if (error) {
+      console.error('Create user error:', error.message)
+      return NextResponse.json(
+        { error: "Erreur lors de la création de l'utilisateur" },
+        { status: 500 }
+      )
+    }
 
     return NextResponse.json({ user: newUser }, { status: 201 })
   } catch (error) {
     console.error('Create user error:', error)
     return NextResponse.json(
-      { error: 'Erreur lors de la création de l\'utilisateur' },
+      { error: "Erreur lors de la création de l'utilisateur" },
       { status: 500 }
     )
   }

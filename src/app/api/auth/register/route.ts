@@ -1,6 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { supabase } from '@/lib/supabase-server'
-import { db } from '@/lib/db'
 
 export async function POST(req: NextRequest) {
   try {
@@ -26,8 +25,6 @@ export async function POST(req: NextRequest) {
       password,
       options: {
         data: { name },
-        // Permet d'obtenir la session immédiatement
-        // (fonctionne si la confirmation email est désactivée dans Supabase)
         emailRedirectTo: undefined,
       },
     })
@@ -46,18 +43,17 @@ export async function POST(req: NextRequest) {
       )
     }
 
-    // Créer le profil Prisma
-    await db.user.upsert({
-      where: { id: authData.user.id },
-      create: {
+    // Créer le profil dans Supabase
+    await supabase.from('"User"').upsert(
+      {
         id: authData.user.id,
         name,
         email,
         cash: 5000,
         type: 'player',
       },
-      update: { name, email },
-    })
+      { onConflict: 'id' }
+    )
 
     // Si session disponible = confirmation email désactivée → connexion auto
     if (authData.session) {

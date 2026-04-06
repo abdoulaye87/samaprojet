@@ -1,6 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { supabase } from '@/lib/supabase-server'
-import { db } from '@/lib/db'
 
 async function authenticate(req: NextRequest) {
   const authHeader = req.headers.get('Authorization')
@@ -30,8 +29,19 @@ export async function POST(req: NextRequest) {
       )
     }
 
-    const fromUser = await db.user.findUnique({ where: { id: user.id } })
-    const toUser = await db.user.findUnique({ where: { id: toUserId } })
+    // Récupérer l'expéditeur
+    const { data: fromUser } = await supabase
+      .from('"User"')
+      .select('*')
+      .eq('id', user.id)
+      .single()
+
+    // Récupérer le destinataire
+    const { data: toUser } = await supabase
+      .from('"User"')
+      .select('*')
+      .eq('id', toUserId)
+      .single()
 
     if (!fromUser) {
       return NextResponse.json(
@@ -54,38 +64,67 @@ export async function POST(req: NextRequest) {
       )
     }
 
-    // Perform transfer in a transaction
-    const result = await db.$transaction(async (tx) => {
-      // Deduct from sender
-      await tx.user.update({
-        where: { id: user.id },
-        data: { cash: { decrement: amount } },
+    // Décrémenter l'expéditeur
+    const { error: debitError } = await supabase
+      .from('"User"')
+      .update({ cash: fromUser.cash - amount })
+      .eq('id', user.id)
+
+    if (debitError) {
+      console.error('Debit error:', debitError.message)
+      return NextResponse.json(
+        { error: 'Erreur lors du débit' },
+        { status: 500 }
+      )
+    }
+
+    // Incrémenter le destinataire
+    const { error: creditError } = await supabase
+      .from('"User"')
+      .update({ cash: toUser.cash + amount })
+      .eq('id', toUserId)
+
+    if (creditError) {
+      console.error('Credit error:', creditError.message)
+      // Tenter de rembourser l'expéditeur en cas d'erreur
+      await supabase
+        .from('"User"')
+        .update({ cash: fromUser.cash })
+        .eq('id', user.id)
+      return NextResponse.json(
+        { error: 'Erreur lors du crédit' },
+        { status: 500 }
+      )
+    }
+
+    // Créer l'enregistrement de transaction
+    const { data: transaction, error: txError } = await supabase
+      .from('"Transaction"')
+      .insert({
+        fromUserId: user.id,
+        toUserId,
+        amount,
+        type: 'transfert',
       })
+      .select()
+      .single()
 
-      // Add to receiver
-      await tx.user.update({
-        where: { id: toUserId },
-        data: { cash: { increment: amount } },
-      })
+    if (txError) {
+      console.error('Transaction record error:', txError.message)
+      return NextResponse.json(
+        { error: 'Erreur lors de l\'enregistrement de la transaction' },
+        { status: 500 }
+      )
+    }
 
-      // Create transaction record
-      const transaction = await tx.transaction.create({
-        data: {
-          fromUserId: user.id,
-          toUserId,
-          amount,
-          type: 'transfert',
-        },
-        include: {
-          fromUser: { select: { id: true, name: true } },
-          toUser: { select: { id: true, name: true } },
-        },
-      })
+    // Enrichir avec les noms
+    const enrichedTransaction = {
+      ...transaction,
+      fromUser: { id: user.id, name: fromUser.name },
+      toUser: { id: toUserId, name: toUser.name },
+    }
 
-      return transaction
-    })
-
-    return NextResponse.json({ transaction: result }, { status: 201 })
+    return NextResponse.json({ transaction: enrichedTransaction }, { status: 201 })
   } catch (error) {
     console.error('Transfer error:', error)
     return NextResponse.json(

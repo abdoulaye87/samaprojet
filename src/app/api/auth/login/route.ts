@@ -1,6 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { supabase } from '@/lib/supabase-server'
-import { db } from '@/lib/db'
 
 export async function POST(req: NextRequest) {
   try {
@@ -33,19 +32,34 @@ export async function POST(req: NextRequest) {
       )
     }
 
-    // Récupérer ou créer le profil Prisma
-    let user = await db.user.findUnique({
-      where: { id: data.user.id },
-    })
+    // Récupérer ou créer le profil dans Supabase
+    const { data: user } = await supabase
+      .from('"User"')
+      .select('*')
+      .eq('id', data.user.id)
+      .single()
 
     if (!user) {
       const name = data.user.user_metadata?.name || email.split('@')[0]
-      user = await db.user.create({
-        data: {
+      await supabase.from('"User"').insert({
+        id: data.user.id,
+        name,
+        email,
+        cash: 5000,
+        type: 'player',
+      })
+
+      return NextResponse.json({
+        success: true,
+        session: {
+          access_token: data.session.access_token,
+          refresh_token: data.session.refresh_token,
+          expires_in: data.session.expires_in,
+        },
+        user: {
           id: data.user.id,
-          name,
           email,
-          cash: 5000,
+          name,
           type: 'player',
         },
       })

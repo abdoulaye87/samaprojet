@@ -1,6 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { supabase } from '@/lib/supabase-server'
-import { db } from '@/lib/db'
 
 async function authenticate(req: NextRequest) {
   const authHeader = req.headers.get('Authorization')
@@ -34,7 +33,13 @@ export async function POST(
       )
     }
 
-    const owner = await db.user.findUnique({ where: { id } })
+    // Vérifier que l'utilisateur existe
+    const { data: owner } = await supabase
+      .from('"User"')
+      .select('id')
+      .eq('id', id)
+      .single()
+
     if (!owner) {
       return NextResponse.json(
         { error: 'Utilisateur non trouvé' },
@@ -42,14 +47,24 @@ export async function POST(
       )
     }
 
-    const business = await db.business.create({
-      data: {
+    const { data: business, error } = await supabase
+      .from('"Business"')
+      .insert({
         ownerId: id,
         name,
         revenue,
         cost,
-      },
-    })
+      })
+      .select()
+      .single()
+
+    if (error) {
+      console.error('Create business error:', error.message)
+      return NextResponse.json(
+        { error: 'Erreur lors de la création du business' },
+        { status: 500 }
+      )
+    }
 
     return NextResponse.json({ business }, { status: 201 })
   } catch (error) {

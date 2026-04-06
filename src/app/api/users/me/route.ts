@@ -1,6 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { supabase } from '@/lib/supabase-server'
-import { db } from '@/lib/db'
 
 export async function GET(req: NextRequest) {
   try {
@@ -23,56 +22,78 @@ export async function GET(req: NextRequest) {
       return NextResponse.json({ error: 'Utilisateur non trouvé via token' }, { status: 401 })
     }
 
-    // Récupérer le profil Prisma
-    let profile = await db.user.findUnique({
-      where: { id: data.user.id },
-      include: {
-        ownedBusinesses: true,
-        businessesSent: {
-          orderBy: { createdAt: 'desc' },
-          take: 20,
-          include: {
-            fromUser: { select: { id: true, name: true } },
-            toUser: { select: { id: true, name: true } },
-          },
-        },
-        businessesReceived: {
-          orderBy: { createdAt: 'desc' },
-          take: 20,
-          include: {
-            fromUser: { select: { id: true, name: true } },
-            toUser: { select: { id: true, name: true } },
-          },
-        },
-      },
-    })
+    const userId = data.user.id
+
+    // Récupérer le profil
+    const { data: profile } = await supabase
+      .from('"User"')
+      .select('*')
+      .eq('id', userId)
+      .single()
 
     if (!profile) {
       const name = data.user.user_metadata?.name || data.user.email?.split('@')[0] || 'Utilisateur'
-      profile = await db.user.create({
-        data: {
-          id: data.user.id,
+      await supabase.from('"User"').insert({
+        id: userId,
+        name,
+        email: data.user.email,
+        cash: 5000,
+        type: 'player',
+      })
+
+      return NextResponse.json({
+        user: {
+          id: userId,
           name,
           email: data.user.email,
           cash: 5000,
           type: 'player',
+          createdAt: new Date().toISOString(),
         },
-        include: {
-          ownedBusinesses: true,
-          businessesSent: true,
-          businessesReceived: true,
-        },
+        businesses: [],
+        transactions: [],
       })
     }
 
-    // Fusionner et dédupliquer les transactions
-    const allTransactions = [
-      ...profile.businessesSent,
-      ...profile.businessesReceived,
-    ].sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime())
+    // Récupérer les businesses
+    const { data: businesses } = await supabase
+      .from('"Business"')
+      .select('*')
+      .eq('ownerId', userId)
 
+    // Récupérer toutes les transactions liées à cet utilisateur
+    const { data: transactions } = await supabase
+      .from('"Transaction"')
+      .select('*')
+      .or(`fromUserId.eq.${userId},toUserId.eq.${userId}`)
+      .order('createdAt', { ascending: false })
+      .limit(20)
+
+    // Récupérer les noms des utilisateurs liés
+    const txList = transactions || []
+    const userIds = [...new Set([...txList.map(t => t.fromUserId), ...txList.map(t => t.toUserId)])]
+
+    const userMap: Record<string, string> = {}
+    if (userIds.length > 0) {
+      const { data: users } = await supabase
+        .from('"User"')
+        .select('id, name')
+        .in('id', userIds)
+      for (const u of users || []) {
+        userMap[u.id] = u.name
+      }
+    }
+
+    // Enrichir les transactions avec les noms
+    const enrichedTx = txList.map(tx => ({
+      ...tx,
+      fromUser: { id: tx.fromUserId, name: userMap[tx.fromUserId] || 'Inconnu' },
+      toUser: { id: tx.toUserId, name: userMap[tx.toUserId] || 'Inconnu' },
+    }))
+
+    // Dédupliquer les transactions
     const seen = new Set<string>()
-    const uniqueTransactions = allTransactions.filter(tx => {
+    const uniqueTransactions = enrichedTx.filter(tx => {
       if (seen.has(tx.id)) return false
       seen.add(tx.id)
       return true
@@ -87,7 +108,7 @@ export async function GET(req: NextRequest) {
         type: profile.type,
         createdAt: profile.createdAt,
       },
-      businesses: profile.ownedBusinesses,
+      businesses: businesses || [],
       transactions: uniqueTransactions,
     })
   } catch (error) {

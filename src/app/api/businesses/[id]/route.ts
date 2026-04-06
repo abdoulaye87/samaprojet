@@ -1,6 +1,5 @@
 import { NextResponse } from 'next/server'
 import { supabase } from '@/lib/supabase-server'
-import { db } from '@/lib/db'
 
 // GET /api/businesses/[id] — Get business details
 export async function GET(
@@ -22,23 +21,32 @@ export async function GET(
 
     const { id } = await params
 
-    const business = await db.business.findUnique({
-      where: { id },
-      include: {
-        owner: {
-          select: { id: true, name: true, type: true, email: true },
-        },
-      },
-    })
+    const { data: business, error: bizError } = await supabase
+      .from('"Business"')
+      .select('*')
+      .eq('id', id)
+      .single()
 
-    if (!business) {
+    if (bizError || !business) {
       return NextResponse.json(
         { error: 'Business non trouvé' },
         { status: 404 }
       )
     }
 
-    return NextResponse.json({ business })
+    // Récupérer les infos du propriétaire
+    const { data: owner } = await supabase
+      .from('"User"')
+      .select('id, name, type, email')
+      .eq('id', business.ownerId)
+      .single()
+
+    const enrichedBusiness = {
+      ...business,
+      owner: owner || { id: business.ownerId, name: 'Inconnu', type: 'unknown', email: null },
+    }
+
+    return NextResponse.json({ business: enrichedBusiness })
   } catch (error) {
     console.error('Get business error:', error)
     return NextResponse.json(
