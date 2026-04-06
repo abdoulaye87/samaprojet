@@ -63,7 +63,7 @@ export async function seedDatabase() {
   }
 
   // Créer les produits du marché
-  await db.marketItem.createMany({
+  await db.market.createMany({
     data: [
       { produit: 'Riz', prix: 500.00, prixBase: 500.00 },
       { produit: 'Huile', prix: 800.00, prixBase: 800.00 },
@@ -85,7 +85,7 @@ export async function seedDatabase() {
   });
 
   // Journal d'événement initial
-  await db.eventLog.create({
+  await db.log.create({
     data: {
       message: '🎮 Simulation économique initialisée — 5 agents, 5 produits, période 1',
       type: 'info',
@@ -112,19 +112,19 @@ export async function applyInflation() {
   const newInflationCumul = economy.inflationCumul + rate;
 
   // Augmenter les prix du marché
-  const marketItems = await db.marketItem.findMany();
+  const marketItems = await db.market.findMany();
   const priceUpdates = marketItems.map((item) => ({
     id: item.id,
     ancienPrix: Number(item.prix.toFixed(2)),
     nouveauPrix: Number((item.prix * (1 + rate)).toFixed(2)),
   }));
 
-  await db.marketItem.updateMany({
+  await db.market.updateMany({
     data: { updatedAt: new Date() },
   });
 
   for (const item of marketItems) {
-    await db.marketItem.update({
+    await db.market.update({
       where: { id: item.id },
       data: {
         prix: Number((item.prix * (1 + rate)).toFixed(2)),
@@ -154,16 +154,22 @@ export async function applyInflation() {
     });
   }
 
-  // Recalculer les dettes des agents à partir des prêts actifs
+  // Dévaluer les soldes des agents (l'argent perd de la valeur)
+  // Taux de dévaluation = 50% du taux d'inflation (si inflation 2%, dévaluation 1%)
+  const devaluationRate = rate * 0.5;
   const agents = await db.agent.findMany({
     include: { loans: { where: { statut: 'en cours' } } },
   });
 
   for (const agent of agents) {
     const totalDette = agent.loans.reduce((sum, loan) => sum + loan.montant, 0);
+    const newBalance = Number((agent.balance * (1 - devaluationRate)).toFixed(2));
     await db.agent.update({
       where: { id: agent.id },
-      data: { dette: Number(totalDette.toFixed(2)) },
+      data: {
+        balance: newBalance,
+        dette: Number(totalDette.toFixed(2)),
+      },
     });
   }
 
@@ -178,9 +184,9 @@ export async function applyInflation() {
   });
 
   // Journaliser
-  await db.eventLog.create({
+  await db.log.create({
     data: {
-      message: `📈 Inflation appliquée — Taux: ${(rate * 100).toFixed(1)}%, Période: ${newPeriode}, Inflation cumulée: ${(newInflationCumul * 100).toFixed(2)}%`,
+      message: `📈 Inflation appliquée — Taux: ${(rate * 100).toFixed(1)}%, Période: ${newPeriode}, Inflation cumulée: ${(newInflationCumul * 100).toFixed(2)}% — Dévaluation soldes: -${(devaluationRate * 100).toFixed(1)}%`,
       type: 'inflation',
       periode: newPeriode,
     },
@@ -236,7 +242,7 @@ export async function applyInterests() {
   }
 
   // Journaliser
-  await db.eventLog.create({
+  await db.log.create({
     data: {
       message: `💰 Intérêts appliqués sur ${results.length} prêt(s) actif(s)`,
       type: 'info',
@@ -272,7 +278,7 @@ export async function crashEconomy() {
   }
 
   // Perturber les prix du marché (entre 70% et 100% du prix actuel)
-  const marketItems = await db.marketItem.findMany();
+  const marketItems = await db.market.findMany();
   const priceResults: { produit: string; prixAvant: number; prixApres: number }[] = [];
 
   for (const item of marketItems) {
@@ -280,7 +286,7 @@ export async function crashEconomy() {
     const factor = 0.70 + Math.random() * 0.30;
     const prixApres = Number((item.prix * factor).toFixed(2));
 
-    await db.marketItem.update({
+    await db.market.update({
       where: { id: item.id },
       data: { prix: prixApres, updatedAt: new Date() },
     });
@@ -290,7 +296,7 @@ export async function crashEconomy() {
 
   // Journaliser le crash
   const totalLoss = agentResults.reduce((sum, a) => sum + (a.soldeAvant - a.soldeApres), 0);
-  await db.eventLog.create({
+  await db.log.create({
     data: {
       message: `💥 CRASH ÉCONOMIQUE ! Perte totale: ${totalLoss.toFixed(2)}F — ${agentResults.length} agents affectés, ${priceResults.length} produits perturbés`,
       type: 'crash',
@@ -310,9 +316,9 @@ export async function getDashboardData() {
       orderBy: { createdAt: 'asc' },
       include: { loans: true },
     }),
-    db.marketItem.findMany({ orderBy: { produit: 'asc' } }),
+    db.market.findMany({ orderBy: { produit: 'asc' } }),
     db.economy.findUnique({ where: { id: 1 } }),
-    db.eventLog.findMany({
+    db.log.findMany({
       orderBy: { createdAt: 'desc' },
       take: 50,
     }),

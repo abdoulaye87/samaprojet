@@ -7,7 +7,7 @@ export async function GET(request: NextRequest) {
     const { searchParams } = new URL(request.url);
     const limit = parseInt(searchParams.get('limit') || '50', 10);
 
-    const logs = await db.eventLog.findMany({
+    const logs = await db.log.findMany({
       orderBy: { createdAt: 'desc' },
       take: Math.min(limit, 200),
     });

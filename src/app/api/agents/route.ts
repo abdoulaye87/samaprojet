@@ -50,7 +50,7 @@ export async function POST(request: NextRequest) {
     });
 
     // Journaliser
-    await db.eventLog.create({
+    await db.log.create({
       data: {
         message: `👤 Nouvel agent créé: ${prenom} (${Number(agent.balance).toFixed(2)}F)`,
         type: 'info',

@@ -38,12 +38,14 @@ model Loan {
   agent       Agent   @relation(fields: [agentId], references: [id], onDelete: Cascade)
 }
 
-model MarketItem {
+model Market {
   id        Int      @id @default(autoincrement())
   produit   String   @unique
   prix      Float
   prixBase  Float
   updatedAt DateTime @default(now())
+
+  @@map("market")
 }
 
 model Economy {
@@ -54,10 +56,12 @@ model Economy {
   updatedAt       DateTime @default(now())
 }
 
-model EventLog {
+model Log {
   id        Int      @id @default(autoincrement())
   message   String
   type      String   @default("info")
   periode   Int      @default(1)
   createdAt DateTime @default(now())
+
+  @@map("logs")
 }

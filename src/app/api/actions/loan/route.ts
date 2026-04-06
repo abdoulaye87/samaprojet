@@ -50,7 +50,7 @@ export async function POST(request: NextRequest) {
 
     // Journaliser
     const economy = await db.economy.findUnique({ where: { id: 1 } });
-    await db.eventLog.create({
+    await db.log.create({
       data: {
         message: `🏦 ${agent.prenom} a contracté un prêt de ${amount.toFixed(2)}F (taux: ${(tauxInteret * 100).toFixed(1)}%) — Dette totale: ${updatedAgent.dette.toFixed(2)}F`,
         type: 'info',

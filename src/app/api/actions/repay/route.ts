@@ -92,7 +92,7 @@ export async function POST(request: NextRequest) {
     // Journaliser
     const economy = await db.economy.findUnique({ where: { id: 1 } });
     const remboursés = loansUpdated.filter((l) => l.statut === 'remboursé').length;
-    await db.eventLog.create({
+    await db.log.create({
       data: {
         message: `💵 ${agent.prenom} a remboursé ${amount.toFixed(2)}F — ${remboursés} prêt(s) soldé(s) — Dette restante: ${newDette.toFixed(2)}F`,
         type: 'info',

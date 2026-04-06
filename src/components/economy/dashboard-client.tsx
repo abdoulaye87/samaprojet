@@ -63,7 +63,7 @@ interface Loan {
   taux: number;
 }
 
-interface MarketItem {
+interface MarketProduct {
   id: string;
   produit: string;
   prix: number;
@@ -79,7 +79,7 @@ interface Economy {
   updatedAt: string;
 }
 
-interface EventLog {
+interface EventLogEntry {
   id: string;
   message: string;
   type: string;
@@ -89,9 +89,9 @@ interface EventLog {
 
 interface DashboardData {
   agents: Agent[];
-  market: MarketItem[];
+  market: MarketProduct[];
   economy: Economy;
-  logs: EventLog[];
+  logs: EventLogEntry[];
   totalRichesse: number;
   totalDette: number;
 }

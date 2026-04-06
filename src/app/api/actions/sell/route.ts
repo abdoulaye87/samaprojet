@@ -16,7 +16,7 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'Agent non trouvé' }, { status: 404 });
     }
 
-    const marketItem = await db.marketItem.findUnique({ where: { produit } });
+    const marketItem = await db.market.findUnique({ where: { produit } });
     if (!marketItem) {
       return NextResponse.json({ error: 'Produit non trouvé sur le marché' }, { status: 404 });
     }
@@ -52,7 +52,7 @@ export async function POST(request: NextRequest) {
 
     // Journaliser
     const economy = await db.economy.findUnique({ where: { id: 1 } });
-    await db.eventLog.create({
+    await db.log.create({
       data: {
         message: `💰 ${agent.prenom} a vendu ${produit} pour ${prixVente.toFixed(2)}F (perte de ${Number((prixActuel - prixVente).toFixed(2))}F)`,
         type: 'info',

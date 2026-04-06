@@ -4,7 +4,7 @@ import { db } from '@/lib/db';
 // GET — Lister les produits du marché
 export async function GET() {
   try {
-    const market = await db.marketItem.findMany({ orderBy: { produit: 'asc' } });
+    const market = await db.market.findMany({ orderBy: { produit: 'asc' } });
 
     const formatted = market.map((item) => ({
       id: item.id,

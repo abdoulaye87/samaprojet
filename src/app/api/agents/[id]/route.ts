@@ -112,7 +112,7 @@ export async function DELETE(
     }
 
     // Journaliser avant suppression
-    await db.eventLog.create({
+    await db.log.create({
       data: {
         message: `🗑️ Agent supprimé: ${existing.prenom}`,
         type: 'info',

@@ -3,7 +3,7 @@
 import { Bar, BarChart, XAxis, YAxis, CartesianGrid, Cell, ResponsiveContainer, Tooltip, Legend } from 'recharts';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 
-interface MarketItem {
+interface MarketProduct {
   id: string;
   produit: string;
   prix: number;
@@ -11,7 +11,7 @@ interface MarketItem {
 }
 
 interface InflationChartProps {
-  market: MarketItem[];
+  market: MarketProduct[];
 }
 
 export function InflationChart({ market }: InflationChartProps) {
