@@ -1,269 +1,114 @@
--- ============================================
--- SCHÉMA SUPABASE — Simulation Économique GLM5
--- Exécuter dans l'éditeur SQL de Supabase
--- ============================================
+-- ============================================================
+-- Sama Économie V1 — Supabase SQL Schema
+-- ============================================================
 
--- ============================================
--- NETTOYAGE — Supprime les tables existantes
--- ============================================
+-- Drop all old tables (V0 schema)
 DROP TABLE IF EXISTS logs CASCADE;
-DROP TABLE IF EXISTS transactions CASCADE;
-DROP TABLE IF EXISTS loans CASCADE;
 DROP TABLE IF EXISTS market CASCADE;
 DROP TABLE IF EXISTS economy CASCADE;
-DROP TABLE IF EXISTS agents CASCADE;
+DROP TABLE IF EXISTS "Loan" CASCADE;
+DROP TABLE IF EXISTS "Transaction" CASCADE;
+DROP TABLE IF EXISTS "Agent" CASCADE;
 
--- ============================================
--- TABLE: agents
--- ============================================
-CREATE TABLE agents (
-  id               SERIAL PRIMARY KEY,
-  prenom           TEXT NOT NULL,
-  balance          NUMERIC(15, 2) NOT NULL DEFAULT 1000.00,
-  dette            NUMERIC(15, 2) NOT NULL DEFAULT 0.00,
-  investissement_total NUMERIC(15, 2) NOT NULL DEFAULT 0.00,
-  created_at       TIMESTAMPTZ NOT NULL DEFAULT NOW()
+-- ============================================================
+-- New tables
+-- ============================================================
+
+CREATE TABLE IF NOT EXISTS "User" (
+  id         TEXT PRIMARY KEY DEFAULT gen_random_uuid(),
+  name       TEXT NOT NULL,
+  email      TEXT UNIQUE,
+  cash       DOUBLE PRECISION NOT NULL DEFAULT 5000,
+  type       TEXT NOT NULL DEFAULT 'player',
+  "createdAt" TIMESTAMP NOT NULL DEFAULT now()
 );
 
--- ============================================
--- TABLE: transactions
--- ============================================
-CREATE TABLE transactions (
-  id          SERIAL PRIMARY KEY,
-  agent_id    INTEGER NOT NULL,
+CREATE TABLE IF NOT EXISTS "Business" (
+  id         TEXT PRIMARY KEY DEFAULT gen_random_uuid(),
+  "ownerId"  TEXT NOT NULL REFERENCES "User"(id) ON DELETE CASCADE,
+  name       TEXT NOT NULL,
+  revenue    DOUBLE PRECISION NOT NULL,
+  cost       DOUBLE PRECISION NOT NULL,
+  "createdAt" TIMESTAMP NOT NULL DEFAULT now()
+);
+
+CREATE TABLE IF NOT EXISTS "Transaction" (
+  id          TEXT PRIMARY KEY DEFAULT gen_random_uuid(),
+  "fromUserId" TEXT NOT NULL REFERENCES "User"(id) ON DELETE CASCADE,
+  "toUserId"   TEXT NOT NULL REFERENCES "User"(id) ON DELETE CASCADE,
+  amount      DOUBLE PRECISION NOT NULL,
   type        TEXT NOT NULL,
-  montant     NUMERIC(15, 2) NOT NULL,
-  description TEXT,
-  created_at  TIMESTAMPTZ NOT NULL DEFAULT NOW(),
-  CONSTRAINT transactions_type_check CHECK (
-    type IN ('achat', 'vente', 'pret', 'remboursement', 'depot', 'retrait', 'crash', 'inflation')
-  )
+  "createdAt"  TIMESTAMP NOT NULL DEFAULT now()
 );
 
--- ============================================
--- TABLE: loans
--- ============================================
-CREATE TABLE loans (
-  id           SERIAL PRIMARY KEY,
-  agent_id     INTEGER NOT NULL,
-  montant      NUMERIC(15, 2) NOT NULL,
-  taux_interet NUMERIC(5, 4) NOT NULL DEFAULT 0.02,
-  statut       TEXT NOT NULL DEFAULT 'en cours',
-  created_at   TIMESTAMPTZ NOT NULL DEFAULT NOW(),
-  CONSTRAINT loans_statut_check CHECK (
-    statut IN ('en cours', 'remboursé')
-  )
-);
+-- ============================================================
+-- Indexes
+-- ============================================================
+CREATE INDEX IF NOT EXISTS idx_business_ownerId ON "Business"("ownerId");
+CREATE INDEX IF NOT EXISTS idx_transaction_fromUserId ON "Transaction"("fromUserId");
+CREATE INDEX IF NOT EXISTS idx_transaction_toUserId ON "Transaction"("toUserId");
+CREATE INDEX IF NOT EXISTS idx_user_email ON "User"(email);
+CREATE INDEX IF NOT EXISTS idx_user_type ON "User"(type);
 
--- ============================================
--- TABLE: market
--- ============================================
-CREATE TABLE market (
-  id         SERIAL PRIMARY KEY,
-  produit    TEXT NOT NULL UNIQUE,
-  prix       NUMERIC(15, 2) NOT NULL,
-  prix_base  NUMERIC(15, 2) NOT NULL,
-  updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
-);
+-- ============================================================
+-- Trigger: auto-link new Supabase Auth user to User table
+-- ============================================================
+CREATE OR REPLACE FUNCTION public.handle_new_user()
+RETURNS TRIGGER AS $$
+BEGIN
+  INSERT INTO public."User" (id, name, email, cash, type)
+  VALUES (
+    NEW.id,
+    COALESCE(NEW.raw_user_meta_data->>'name', NEW.email),
+    NEW.email,
+    5000,
+    'player'
+  );
+  RETURN NEW;
+END;
+$$ LANGUAGE plpgsql SECURITY DEFINER;
 
--- ============================================
--- TABLE: economy
--- ============================================
-CREATE TABLE economy (
-  id              INTEGER PRIMARY KEY DEFAULT 1 CHECK (id = 1),
-  periode         INTEGER NOT NULL DEFAULT 1,
-  inflation_cumul NUMERIC(10, 4) NOT NULL DEFAULT 0.00,
-  inflation_rate  NUMERIC(5, 4) NOT NULL DEFAULT 0.02,
-  updated_at      TIMESTAMPTZ NOT NULL DEFAULT NOW()
-);
+DROP TRIGGER IF EXISTS on_auth_user_created ON auth.users;
+CREATE TRIGGER on_auth_user_created
+  AFTER INSERT ON auth.users
+  FOR EACH ROW
+  EXECUTE FUNCTION public.handle_new_user();
 
--- ============================================
--- TABLE: logs
--- ============================================
-CREATE TABLE logs (
-  id         SERIAL PRIMARY KEY,
-  message    TEXT NOT NULL,
-  type       TEXT NOT NULL DEFAULT 'info',
-  periode    INTEGER NOT NULL DEFAULT 1,
-  created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
-);
-
--- ============================================
--- FOREIGN KEY CONSTRAINTS
--- ============================================
-ALTER TABLE transactions
-  ADD CONSTRAINT transactions_agent_id_fkey
-  FOREIGN KEY (agent_id) REFERENCES agents(id) ON DELETE CASCADE;
-
-ALTER TABLE loans
-  ADD CONSTRAINT loans_agent_id_fkey
-  FOREIGN KEY (agent_id) REFERENCES agents(id) ON DELETE CASCADE;
-
--- ============================================
--- INDEXES
--- ============================================
-CREATE INDEX IF NOT EXISTS transactions_agent_id_idx ON transactions(agent_id);
-CREATE INDEX IF NOT EXISTS transactions_created_at_idx ON transactions(created_at DESC);
-CREATE INDEX IF NOT EXISTS loans_agent_id_idx ON loans(agent_id);
-CREATE INDEX IF NOT EXISTS loans_statut_idx ON loans(statut);
-CREATE INDEX IF NOT EXISTS logs_created_at_idx ON logs(created_at DESC);
-
--- ============================================
--- DONNÉES INITIALES
--- ============================================
-
--- Agents initiaux
-INSERT INTO agents (prenom, balance, dette) VALUES
-  ('Aminata', 2500.00, 0.00),
-  ('Moussa', 1800.00, 500.00),
-  ('Fatou', 3200.00, 0.00),
-  ('Ibrahima', 900.00, 1200.00),
-  ('Rokhaya', 4100.00, 200.00)
-ON CONFLICT DO NOTHING;
-
--- Produits du marché
-INSERT INTO market (produit, prix, prix_base) VALUES
-  ('Riz', 500.00, 500.00),
-  ('Huile', 800.00, 800.00),
-  ('Ciment', 3000.00, 3000.00),
-  ('Farine', 400.00, 400.00),
-  ('Sucre', 600.00, 600.00)
-ON CONFLICT (produit) DO NOTHING;
-
--- État initial de l'économie
-INSERT INTO economy (id, periode, inflation_cumul, inflation_rate) VALUES
-  (1, 1, 0.00, 0.02)
+-- ============================================================
+-- Seed: 2 agent accounts with businesses
+-- ============================================================
+INSERT INTO "User" (id, name, email, cash, type) VALUES
+  ('agent-boutique-central', 'Boutique Central', NULL, 50000, 'agent'),
+  ('agent-marche-fresh', 'Marché Fresh', NULL, 30000, 'agent')
 ON CONFLICT (id) DO NOTHING;
 
--- ============================================
--- FONCTIONS SQL
--- ============================================
+INSERT INTO "Business" (id, "ownerId", name, revenue, cost) VALUES
+  ('biz-boutique-central', 'agent-boutique-central', 'Boutique Central', 5000, 2000),
+  ('biz-marche-fresh', 'agent-marche-fresh', 'Marché Fresh', 3000, 1200)
+ON CONFLICT (id) DO NOTHING;
 
--- Appliquer l'inflation sur le marché + dévaluer les soldes des agents
--- Les prix augmentent du taux d'inflation
--- Les soldes des agents diminuent de 50% du taux (dévaluation)
-CREATE OR REPLACE FUNCTION apply_inflation(rate NUMERIC DEFAULT NULL)
-RETURNS VOID AS $$
-DECLARE
-  current_rate NUMERIC;
-  devaluation_rate NUMERIC;
-  current_economy RECORD;
-BEGIN
-  -- Récupérer le taux actuel si non fourni
-  IF rate IS NOT NULL THEN
-    current_rate := rate;
-  ELSE
-    SELECT * INTO current_economy FROM economy WHERE id = 1;
-    current_rate := current_economy.inflation_rate;
-  END IF;
+-- ============================================================
+-- Enable Row Level Security (RLS)
+-- ============================================================
+ALTER TABLE "User" ENABLE ROW LEVEL SECURITY;
+ALTER TABLE "Business" ENABLE ROW LEVEL SECURITY;
+ALTER TABLE "Transaction" ENABLE ROW LEVEL SECURITY;
 
-  -- La dévaluation = 50% du taux d'inflation (ex: 2% inflation → 1% dévaluation)
-  devaluation_rate := current_rate * 0.5;
+-- Users: anyone authenticated can read all users
+CREATE POLICY "Users readable by authenticated users" ON "User"
+  FOR SELECT USING (auth.uid() IS NOT NULL);
 
-  -- Augmenter les prix du marché
-  UPDATE market
-  SET prix = ROUND(prix * (1 + current_rate), 2),
-      updated_at = NOW();
+-- Users: authenticated users can update their own profile
+CREATE POLICY "Users can update own profile" ON "User"
+  FOR UPDATE USING (auth.uid() = id);
 
-  -- Dévaluer les soldes des agents (l'argent perd de la valeur)
-  UPDATE agents
-  SET balance = ROUND(balance * (1 - devaluation_rate), 2);
+-- Businesses: anyone authenticated can read all businesses
+CREATE POLICY "Businesses readable by authenticated users" ON "Business"
+  FOR SELECT USING (auth.uid() IS NOT NULL);
 
-  -- Appliquer les intérêts sur les prêts en cours
-  UPDATE loans
-  SET montant = ROUND(montant * (1 + taux_interet), 2)
-  WHERE statut = 'en cours';
+-- Transactions: anyone authenticated can read all transactions
+CREATE POLICY "Transactions readable by authenticated users" ON "Transaction"
+  FOR SELECT USING (auth.uid() IS NOT NULL);
 
-  -- Recalculer les dettes des agents
-  UPDATE agents a
-  SET dette = COALESCE((
-    SELECT SUM(l.montant)
-    FROM loans l
-    WHERE l.agent_id = a.id AND l.statut = 'en cours'
-  ), 0.00);
-
-  -- Mettre à jour l'état de l'économie
-  UPDATE economy
-  SET periode = periode + 1,
-      inflation_cumul = ROUND(inflation_cumul + current_rate, 4),
-      updated_at = NOW()
-  WHERE id = 1;
-
-  -- Journaliser
-  INSERT INTO logs (message, type, periode)
-  SELECT
-    'Inflation appliquée — Taux: ' || (current_rate * 100)::TEXT || '%, Période: ' || (periode + 1)::TEXT || ', Dévaluation soldes: -' || (devaluation_rate * 100)::TEXT || '%',
-    'inflation',
-    periode + 1
-  FROM economy WHERE id = 1;
-END;
-$$ LANGUAGE plpgsql;
-
--- Appliquer les intérêts sur les dettes (appel séparé si besoin)
-CREATE OR REPLACE FUNCTION apply_interests()
-RETURNS VOID AS $$
-BEGIN
-  UPDATE loans
-  SET montant = ROUND(montant * (1 + taux_interet), 2)
-  WHERE statut = 'en cours';
-
-  -- Recalculer les dettes des agents
-  UPDATE agents a
-  SET dette = COALESCE((
-    SELECT SUM(l.montant)
-    FROM loans l
-    WHERE l.agent_id = a.id AND l.statut = 'en cours'
-  ), 0.00);
-END;
-$$ LANGUAGE plpgsql;
-
--- Crash économique : perte aléatoire 0-50% + perturbation marché
-CREATE OR REPLACE FUNCTION crash_economy()
-RETURNS TABLE(agent_prenom TEXT, perte_pct NUMERIC, solde_avant NUMERIC, solde_apres NUMERIC) AS $$
-DECLARE
-  rec RECORD;
-  loss_pct NUMERIC;
-  solde_before NUMERIC;
-  solde_after NUMERIC;
-BEGIN
-  -- Appliquer une perte aléatoire de 0 à 50% sur chaque agent
-  FOR rec IN SELECT id, prenom, balance FROM agents LOOP
-    loss_pct := ROUND((RANDOM() * 50)::NUMERIC, 1);
-    solde_before := rec.balance;
-    solde_after := ROUND(rec.balance * (1 - loss_pct / 100), 2);
-
-    UPDATE agents SET balance = solde_after WHERE id = rec.id;
-
-    INSERT INTO transactions (agent_id, type, montant, description)
-    VALUES (rec.id, 'crash', solde_before - solde_after,
-      'Crash économique — perte ' || loss_pct || '%');
-
-    agent_prenom := rec.prenom;
-    perte_pct := loss_pct;
-    solde_avant := solde_before;
-    solde_apres := solde_after;
-    RETURN NEXT;
-  END LOOP;
-
-  -- Perturber les prix du marché (entre 70% et 100% du prix actuel)
-  UPDATE market
-  SET prix = ROUND(prix * (0.70 + (RANDOM() * 0.30)::NUMERIC), 2),
-      updated_at = NOW();
-
-  -- Journaliser le crash
-  INSERT INTO logs (message, type, periode)
-  SELECT 'CRASH ÉCONOMIQUE déclenché', 'crash', periode
-  FROM economy WHERE id = 1;
-END;
-$$ LANGUAGE plpgsql;
-
--- ============================================
--- ROW LEVEL SECURITY (commenté — désactivé par défaut)
--- Activer si vous utilisez l'auth Supabase
--- ============================================
--- ALTER TABLE agents ENABLE ROW LEVEL SECURITY;
--- ALTER TABLE transactions ENABLE ROW LEVEL SECURITY;
--- ALTER TABLE loans ENABLE ROW LEVEL SECURITY;
--- ALTER TABLE market ENABLE ROW LEVEL SECURITY;
--- ALTER TABLE economy ENABLE ROW LEVEL SECURITY;
--- ALTER TABLE logs ENABLE ROW LEVEL SECURITY;
+-- Note: For admin operations (create agent, create business, transfer, etc.),
+-- we use the service_role key on the server side which bypasses RLS.
