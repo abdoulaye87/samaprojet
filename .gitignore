@@ -50,5 +50,17 @@ test
 prompt
 
 server.log
+
+# Database
+db/*.db
+db/*.db-journal
+
 # Skills directory
 /skills/
+
+# Z.ai internal scripts
+.zscripts/
+worklog.md
+
+# Upload files
+/upload/
