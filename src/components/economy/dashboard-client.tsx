@@ -136,12 +136,7 @@ export function DashboardClient() {
     );
   }
 
-  // Not logged in → Landing Page
-  if (!user || !accessToken) {
-    return <LandingPage onLogin={() => setCurrentPage('login')} onRegister={() => setCurrentPage('login')} />;
-  }
-
-  // Login page (embedded in landing context)
+  // Login/Register page — must be checked BEFORE the !user check
   if (currentPage === 'login') {
     return (
       <AuthPage
@@ -151,6 +146,11 @@ export function DashboardClient() {
         }}
       />
     );
+  }
+
+  // Not logged in → Landing Page
+  if (!user || !accessToken) {
+    return <LandingPage onLogin={() => setCurrentPage('login')} onRegister={() => setCurrentPage('login')} />;
   }
 
   // Admin → AdminDashboard
