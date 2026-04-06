@@ -57,13 +57,13 @@ CREATE TABLE IF NOT EXISTS "User" (
   is_bankrupt BOOLEAN NOT NULL DEFAULT FALSE,
   status TEXT NOT NULL DEFAULT 'active',
   profile_views INT NOT NULL DEFAULT 0,
-  "createdAt" TIMESTAMP NOT NULL DEFAULT now(),
-  "updatedAt" TIMESTAMP NOT NULL DEFAULT now()
+  created_at TIMESTAMP NOT NULL DEFAULT now(),
+  updated_at TIMESTAMP NOT NULL DEFAULT now()
 );
 
 CREATE TABLE IF NOT EXISTS "Loan" (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-  userId UUID NOT NULL REFERENCES "User"(id) ON DELETE CASCADE,
+  user_id UUID NOT NULL REFERENCES "User"(id) ON DELETE CASCADE,
   amount DOUBLE PRECISION NOT NULL,
   interest_rate DOUBLE PRECISION NOT NULL DEFAULT 2.5,
   total_due DOUBLE PRECISION NOT NULL,
@@ -73,14 +73,14 @@ CREATE TABLE IF NOT EXISTS "Loan" (
   status TEXT NOT NULL DEFAULT 'active',
   auto_approved BOOLEAN NOT NULL DEFAULT TRUE,
   admin_approved BOOLEAN,
-  "createdAt" TIMESTAMP NOT NULL DEFAULT now(),
-  "updatedAt" TIMESTAMP NOT NULL DEFAULT now()
+  created_at TIMESTAMP NOT NULL DEFAULT now(),
+  updated_at TIMESTAMP NOT NULL DEFAULT now()
 );
 
 CREATE TABLE IF NOT EXISTS "Project" (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-  userId UUID NOT NULL REFERENCES "User"(id) ON DELETE CASCADE,
-  loanId UUID REFERENCES "Loan"(id) ON DELETE SET NULL,
+  user_id UUID NOT NULL REFERENCES "User"(id) ON DELETE CASCADE,
+  loan_id UUID REFERENCES "Loan"(id) ON DELETE SET NULL,
   name TEXT NOT NULL,
   description TEXT,
   category TEXT NOT NULL,
@@ -92,13 +92,13 @@ CREATE TABLE IF NOT EXISTS "Project" (
   monthly_expense DOUBLE PRECISION NOT NULL DEFAULT 0,
   months_elapsed INT NOT NULL DEFAULT 0,
   total_months INT NOT NULL DEFAULT 12,
-  "createdAt" TIMESTAMP NOT NULL DEFAULT now(),
-  "updatedAt" TIMESTAMP NOT NULL DEFAULT now()
+  created_at TIMESTAMP NOT NULL DEFAULT now(),
+  updated_at TIMESTAMP NOT NULL DEFAULT now()
 );
 
 CREATE TABLE IF NOT EXISTS "ProjectExpense" (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-  projectId UUID NOT NULL REFERENCES "Project"(id) ON DELETE CASCADE,
+  project_id UUID NOT NULL REFERENCES "Project"(id) ON DELETE CASCADE,
   name TEXT NOT NULL,
   description TEXT,
   amount DOUBLE PRECISION NOT NULL,
@@ -110,19 +110,19 @@ CREATE TABLE IF NOT EXISTS "ProjectExpense" (
 
 CREATE TABLE IF NOT EXISTS "GameEvent" (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-  userId UUID NOT NULL REFERENCES "User"(id) ON DELETE CASCADE,
-  projectId UUID REFERENCES "Project"(id) ON DELETE SET NULL,
+  user_id UUID NOT NULL REFERENCES "User"(id) ON DELETE CASCADE,
+  project_id UUID REFERENCES "Project"(id) ON DELETE SET NULL,
   title TEXT NOT NULL,
   description TEXT NOT NULL,
   impact DOUBLE PRECISION NOT NULL,
   category TEXT NOT NULL,
   month INT NOT NULL,
-  "createdAt" TIMESTAMP NOT NULL DEFAULT now()
+  created_at TIMESTAMP NOT NULL DEFAULT now()
 );
 
 CREATE TABLE IF NOT EXISTS "Asset" (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-  userId UUID NOT NULL REFERENCES "User"(id) ON DELETE CASCADE,
+  user_id UUID NOT NULL REFERENCES "User"(id) ON DELETE CASCADE,
   name TEXT NOT NULL,
   category TEXT NOT NULL,
   description TEXT,
@@ -131,7 +131,7 @@ CREATE TABLE IF NOT EXISTS "Asset" (
   image TEXT,
   details JSONB DEFAULT '{}',
   status TEXT NOT NULL DEFAULT 'owned',
-  "createdAt" TIMESTAMP NOT NULL DEFAULT now()
+  created_at TIMESTAMP NOT NULL DEFAULT now()
 );
 
 CREATE TABLE IF NOT EXISTS "MarketPrice" (
@@ -139,22 +139,22 @@ CREATE TABLE IF NOT EXISTS "MarketPrice" (
   category TEXT NOT NULL UNIQUE,
   price DOUBLE PRECISION NOT NULL,
   change_pct DOUBLE PRECISION NOT NULL DEFAULT 0,
-  "updatedAt" TIMESTAMP NOT NULL DEFAULT now()
+  updated_at TIMESTAMP NOT NULL DEFAULT now()
 );
 
 CREATE TABLE IF NOT EXISTS "Transaction" (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-  fromUserId UUID REFERENCES "User"(id) ON DELETE SET NULL,
-  toUserId UUID REFERENCES "User"(id) ON DELETE SET NULL,
+  from_user_id UUID REFERENCES "User"(id) ON DELETE SET NULL,
+  to_user_id UUID REFERENCES "User"(id) ON DELETE SET NULL,
   amount DOUBLE PRECISION NOT NULL,
   type TEXT NOT NULL,
   description TEXT,
-  "createdAt" TIMESTAMP NOT NULL DEFAULT now()
+  created_at TIMESTAMP NOT NULL DEFAULT now()
 );
 
 CREATE TABLE IF NOT EXISTS "Shop" (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-  ownerId UUID NOT NULL REFERENCES "User"(id) ON DELETE CASCADE,
+  owner_id UUID NOT NULL REFERENCES "User"(id) ON DELETE CASCADE,
   name TEXT NOT NULL,
   description TEXT,
   category TEXT NOT NULL,
@@ -163,13 +163,13 @@ CREATE TABLE IF NOT EXISTS "Shop" (
   review_count INT NOT NULL DEFAULT 0,
   sales_count INT NOT NULL DEFAULT 0,
   status TEXT NOT NULL DEFAULT 'active',
-  "createdAt" TIMESTAMP NOT NULL DEFAULT now()
+  created_at TIMESTAMP NOT NULL DEFAULT now()
 );
 
 CREATE TABLE IF NOT EXISTS "Product" (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-  shopId UUID NOT NULL REFERENCES "Shop"(id) ON DELETE CASCADE,
-  ownerId UUID NOT NULL REFERENCES "User"(id) ON DELETE CASCADE,
+  shop_id UUID NOT NULL REFERENCES "Shop"(id) ON DELETE CASCADE,
+  owner_id UUID NOT NULL REFERENCES "User"(id) ON DELETE CASCADE,
   name TEXT NOT NULL,
   description TEXT,
   category TEXT NOT NULL,
@@ -177,143 +177,143 @@ CREATE TABLE IF NOT EXISTS "Product" (
   stock INT NOT NULL DEFAULT 999,
   image TEXT,
   status TEXT NOT NULL DEFAULT 'available',
-  "createdAt" TIMESTAMP NOT NULL DEFAULT now()
+  created_at TIMESTAMP NOT NULL DEFAULT now()
 );
 
 CREATE TABLE IF NOT EXISTS "Service" (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-  shopId UUID NOT NULL REFERENCES "Shop"(id) ON DELETE CASCADE,
-  ownerId UUID NOT NULL REFERENCES "User"(id) ON DELETE CASCADE,
+  shop_id UUID NOT NULL REFERENCES "Shop"(id) ON DELETE CASCADE,
+  owner_id UUID NOT NULL REFERENCES "User"(id) ON DELETE CASCADE,
   name TEXT NOT NULL,
   description TEXT,
   category TEXT NOT NULL,
   price DOUBLE PRECISION NOT NULL,
   availability TEXT NOT NULL DEFAULT 'available',
-  "createdAt" TIMESTAMP NOT NULL DEFAULT now()
+  created_at TIMESTAMP NOT NULL DEFAULT now()
 );
 
 CREATE TABLE IF NOT EXISTS "Demand" (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-  userId UUID NOT NULL REFERENCES "User"(id) ON DELETE CASCADE,
+  user_id UUID NOT NULL REFERENCES "User"(id) ON DELETE CASCADE,
   title TEXT NOT NULL,
   description TEXT,
   category TEXT NOT NULL,
   budget DOUBLE PRECISION,
   status TEXT NOT NULL DEFAULT 'open',
   responses_count INT NOT NULL DEFAULT 0,
-  "createdAt" TIMESTAMP NOT NULL DEFAULT now(),
-  "updatedAt" TIMESTAMP NOT NULL DEFAULT now()
+  created_at TIMESTAMP NOT NULL DEFAULT now(),
+  updated_at TIMESTAMP NOT NULL DEFAULT now()
 );
 
 CREATE TABLE IF NOT EXISTS "Proposal" (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-  demandId UUID NOT NULL REFERENCES "Demand"(id) ON DELETE CASCADE,
-  fromUserId UUID NOT NULL REFERENCES "User"(id) ON DELETE CASCADE,
-  productId UUID REFERENCES "Product"(id) ON DELETE SET NULL,
-  serviceId UUID REFERENCES "Service"(id) ON DELETE SET NULL,
+  demand_id UUID NOT NULL REFERENCES "Demand"(id) ON DELETE CASCADE,
+  from_user_id UUID NOT NULL REFERENCES "User"(id) ON DELETE CASCADE,
+  product_id UUID REFERENCES "Product"(id) ON DELETE SET NULL,
+  service_id UUID REFERENCES "Service"(id) ON DELETE SET NULL,
   price DOUBLE PRECISION NOT NULL,
   message TEXT,
   status TEXT NOT NULL DEFAULT 'pending',
-  "createdAt" TIMESTAMP NOT NULL DEFAULT now()
+  created_at TIMESTAMP NOT NULL DEFAULT now()
 );
 
 CREATE TABLE IF NOT EXISTS "Order" (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-  buyerId UUID NOT NULL REFERENCES "User"(id) ON DELETE CASCADE,
-  sellerId UUID NOT NULL REFERENCES "User"(id) ON DELETE CASCADE,
-  productId UUID REFERENCES "Product"(id) ON DELETE SET NULL,
-  serviceId UUID REFERENCES "Service"(id) ON DELETE SET NULL,
-  demandId UUID REFERENCES "Demand"(id) ON DELETE SET NULL,
+  buyer_id UUID NOT NULL REFERENCES "User"(id) ON DELETE CASCADE,
+  seller_id UUID NOT NULL REFERENCES "User"(id) ON DELETE CASCADE,
+  product_id UUID REFERENCES "Product"(id) ON DELETE SET NULL,
+  service_id UUID REFERENCES "Service"(id) ON DELETE SET NULL,
+  demand_id UUID REFERENCES "Demand"(id) ON DELETE SET NULL,
   amount DOUBLE PRECISION NOT NULL,
   status TEXT NOT NULL DEFAULT 'pending',
-  "createdAt" TIMESTAMP NOT NULL DEFAULT now()
+  created_at TIMESTAMP NOT NULL DEFAULT now()
 );
 
 CREATE TABLE IF NOT EXISTS "FeedPost" (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-  userId UUID NOT NULL REFERENCES "User"(id) ON DELETE CASCADE,
+  user_id UUID NOT NULL REFERENCES "User"(id) ON DELETE CASCADE,
   type TEXT NOT NULL,
   title TEXT NOT NULL,
   description TEXT,
   metadata JSONB DEFAULT '{}',
   likes INT NOT NULL DEFAULT 0,
   comments INT NOT NULL DEFAULT 0,
-  "createdAt" TIMESTAMP NOT NULL DEFAULT now()
+  created_at TIMESTAMP NOT NULL DEFAULT now()
 );
 
 CREATE TABLE IF NOT EXISTS "FeedLike" (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-  postId UUID NOT NULL REFERENCES "FeedPost"(id) ON DELETE CASCADE,
-  userId UUID NOT NULL REFERENCES "User"(id) ON DELETE CASCADE,
-  UNIQUE(postId, userId)
+  post_id UUID NOT NULL REFERENCES "FeedPost"(id) ON DELETE CASCADE,
+  user_id UUID NOT NULL REFERENCES "User"(id) ON DELETE CASCADE,
+  UNIQUE(post_id, user_id)
 );
 
 CREATE TABLE IF NOT EXISTS "FeedComment" (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-  postId UUID NOT NULL REFERENCES "FeedPost"(id) ON DELETE CASCADE,
-  userId UUID NOT NULL REFERENCES "User"(id) ON DELETE CASCADE,
+  post_id UUID NOT NULL REFERENCES "FeedPost"(id) ON DELETE CASCADE,
+  user_id UUID NOT NULL REFERENCES "User"(id) ON DELETE CASCADE,
   content TEXT NOT NULL,
-  "createdAt" TIMESTAMP NOT NULL DEFAULT now()
+  created_at TIMESTAMP NOT NULL DEFAULT now()
 );
 
 CREATE TABLE IF NOT EXISTS "Review" (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-  fromUserId UUID NOT NULL REFERENCES "User"(id) ON DELETE CASCADE,
-  toUserId UUID NOT NULL REFERENCES "User"(id) ON DELETE CASCADE,
-  orderId UUID REFERENCES "Order"(id) ON DELETE SET NULL,
+  from_user_id UUID NOT NULL REFERENCES "User"(id) ON DELETE CASCADE,
+  to_user_id UUID NOT NULL REFERENCES "User"(id) ON DELETE CASCADE,
+  order_id UUID REFERENCES "Order"(id) ON DELETE SET NULL,
   rating INT NOT NULL CHECK (rating >= 1 AND rating <= 5),
   comment TEXT,
-  "createdAt" TIMESTAMP NOT NULL DEFAULT now(),
-  UNIQUE(fromUserId, toUserId, "createdAt")
+  created_at TIMESTAMP NOT NULL DEFAULT now(),
+  UNIQUE(from_user_id, to_user_id, created_at)
 );
 
 CREATE TABLE IF NOT EXISTS "Challenge" (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-  fromUserId UUID NOT NULL REFERENCES "User"(id) ON DELETE CASCADE,
-  toUserId UUID NOT NULL REFERENCES "User"(id) ON DELETE CASCADE,
+  from_user_id UUID NOT NULL REFERENCES "User"(id) ON DELETE CASCADE,
+  to_user_id UUID NOT NULL REFERENCES "User"(id) ON DELETE CASCADE,
   description TEXT NOT NULL,
   stake DOUBLE PRECISION NOT NULL DEFAULT 0,
   status TEXT NOT NULL DEFAULT 'pending',
-  winnerId UUID REFERENCES "User"(id) ON DELETE SET NULL,
-  "createdAt" TIMESTAMP NOT NULL DEFAULT now(),
-  "updatedAt" TIMESTAMP NOT NULL DEFAULT now()
+  winner_id UUID REFERENCES "User"(id) ON DELETE SET NULL,
+  created_at TIMESTAMP NOT NULL DEFAULT now(),
+  updated_at TIMESTAMP NOT NULL DEFAULT now()
 );
 
 CREATE TABLE IF NOT EXISTS "P2PLoan" (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-  lenderId UUID NOT NULL REFERENCES "User"(id) ON DELETE CASCADE,
-  borrowerId UUID NOT NULL REFERENCES "User"(id) ON DELETE CASCADE,
+  lender_id UUID NOT NULL REFERENCES "User"(id) ON DELETE CASCADE,
+  borrower_id UUID NOT NULL REFERENCES "User"(id) ON DELETE CASCADE,
   amount DOUBLE PRECISION NOT NULL,
   interest_rate DOUBLE PRECISION NOT NULL,
   total_due DOUBLE PRECISION NOT NULL,
   remaining DOUBLE PRECISION NOT NULL,
   status TEXT NOT NULL DEFAULT 'active',
-  "createdAt" TIMESTAMP NOT NULL DEFAULT now()
+  created_at TIMESTAMP NOT NULL DEFAULT now()
 );
 
 CREATE TABLE IF NOT EXISTS "ProfileView" (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-  viewerId UUID NOT NULL REFERENCES "User"(id) ON DELETE CASCADE,
-  viewedId UUID NOT NULL REFERENCES "User"(id) ON DELETE CASCADE,
-  "createdAt" TIMESTAMP NOT NULL DEFAULT now()
+  viewer_id UUID NOT NULL REFERENCES "User"(id) ON DELETE CASCADE,
+  viewed_id UUID NOT NULL REFERENCES "User"(id) ON DELETE CASCADE,
+  created_at TIMESTAMP NOT NULL DEFAULT now()
 );
 
 CREATE TABLE IF NOT EXISTS "Notification" (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-  userId UUID NOT NULL REFERENCES "User"(id) ON DELETE CASCADE,
+  user_id UUID NOT NULL REFERENCES "User"(id) ON DELETE CASCADE,
   type TEXT NOT NULL,
   title TEXT NOT NULL,
   message TEXT,
   "read" BOOLEAN NOT NULL DEFAULT FALSE,
   link TEXT,
-  "createdAt" TIMESTAMP NOT NULL DEFAULT now()
+  created_at TIMESTAMP NOT NULL DEFAULT now()
 );
 
 CREATE TABLE IF NOT EXISTS "GameSettings" (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   key TEXT NOT NULL UNIQUE,
   value TEXT NOT NULL,
-  "updatedAt" TIMESTAMP NOT NULL DEFAULT now()
+  updated_at TIMESTAMP NOT NULL DEFAULT now()
 );
 
 -- INDEXES
@@ -321,17 +321,17 @@ CREATE INDEX IF NOT EXISTS idx_user_email ON "User"(email);
 CREATE INDEX IF NOT EXISTS idx_user_is_agent ON "User"(is_agent);
 CREATE INDEX IF NOT EXISTS idx_user_credit_score ON "User"(credit_score DESC);
 CREATE INDEX IF NOT EXISTS idx_user_cash ON "User"(cash DESC);
-CREATE INDEX IF NOT EXISTS idx_loan_user ON "Loan"(userId);
+CREATE INDEX IF NOT EXISTS idx_loan_user ON "Loan"(user_id);
 CREATE INDEX IF NOT EXISTS idx_loan_status ON "Loan"(status);
-CREATE INDEX IF NOT EXISTS idx_asset_user ON "Asset"(userId);
-CREATE INDEX IF NOT EXISTS idx_shop_owner ON "Shop"(ownerId);
-CREATE INDEX IF NOT EXISTS idx_product_shop ON "Product"(shopId);
-CREATE INDEX IF NOT EXISTS idx_service_shop ON "Service"(shopId);
-CREATE INDEX IF NOT EXISTS idx_demand_user ON "Demand"(userId);
-CREATE INDEX IF NOT EXISTS idx_proposal_demand ON "Proposal"(demandId);
-CREATE INDEX IF NOT EXISTS idx_feed_created ON "FeedPost"("createdAt" DESC);
-CREATE INDEX IF NOT EXISTS idx_transaction_created ON "Transaction"("createdAt" DESC);
-CREATE INDEX IF NOT EXISTS idx_notification_user ON "Notification"(userId, "read");
+CREATE INDEX IF NOT EXISTS idx_asset_user ON "Asset"(user_id);
+CREATE INDEX IF NOT EXISTS idx_shop_owner ON "Shop"(owner_id);
+CREATE INDEX IF NOT EXISTS idx_product_shop ON "Product"(shop_id);
+CREATE INDEX IF NOT EXISTS idx_service_shop ON "Service"(shop_id);
+CREATE INDEX IF NOT EXISTS idx_demand_user ON "Demand"(user_id);
+CREATE INDEX IF NOT EXISTS idx_proposal_demand ON "Proposal"(demand_id);
+CREATE INDEX IF NOT EXISTS idx_feed_created ON "FeedPost"(created_at DESC);
+CREATE INDEX IF NOT EXISTS idx_transaction_created ON "Transaction"(created_at DESC);
+CREATE INDEX IF NOT EXISTS idx_notification_user ON "Notification"(user_id, "read");
 
 -- RLS désactivé
 ALTER TABLE "User" DISABLE ROW LEVEL SECURITY;
@@ -364,7 +364,7 @@ RETURNS TRIGGER AS $$
 BEGIN
   INSERT INTO public."User" (id, name, email, cash, type)
   VALUES (NEW.id, COALESCE(NEW.raw_user_meta_data->>'name', SPLIT_PART(NEW.email, '@', 1)), NEW.email, 0, 'player');
-  INSERT INTO public."FeedPost" (userId, type, title, description)
+  INSERT INTO public."FeedPost" (user_id, type, title, description)
   VALUES (NEW.id, 'inscription', COALESCE(NEW.raw_user_meta_data->>'name', SPLIT_PART(NEW.email, '@', 1)) || ' a rejoint Sama Économie !', 'Un nouvel entrepreneur arrive.');
   RETURN NEW;
 END;
@@ -709,7 +709,7 @@ INSERT INTO "User" (id, name, email, cash, type, is_agent, agent_personality, av
 -- BOUTIQUES, PRODUITS, SERVICES
 -- ============================================================
 
-INSERT INTO "Shop" (id, "ownerId", name, description, category, location, rating, review_count, sales_count, status) VALUES
+INSERT INTO "Shop" (id, owner_id, name, description, category, location, rating, review_count, sales_count, status) VALUES
   ('d7f38aa6-4e2f-4996-a651-e016bfa96ac8', '29df523b-2e14-401f-8712-2d630341a645', 'Boulangerie Moderne - Dia', 'Boutique de Awa Dia à Guédiawaye', 'boutique', 'Guédiawaye', 3.21, 34, 125, 'active'),
   ('d64ddb57-de2d-4c79-bcf6-1980efbfee03', '9b9226b4-c401-4aa5-8297-d693fb8ad61d', 'Quincaillerie du Nord - Mbaye', 'Boutique de Djenaba Mbaye à Plateau', 'service', 'Plateau', 3.81, 36, 62, 'active'),
   ('d6fc62a8-7e01-421c-8aca-a4371271b265', 'e2c12fee-706f-41d2-9f12-b638f50cc2a5', 'Teranga Telecom - Guissé', 'Boutique de Daouda Guissé à Podor', 'service', 'Podor', 4.38, 5, 165, 'active'),
@@ -912,7 +912,7 @@ INSERT INTO "Shop" (id, "ownerId", name, description, category, location, rating
   ('af1199aa-ed3a-4f0c-8679-d358ad9ed242', '7a22daa1-9751-47f9-aa07-a35495d6c93d', 'Bric-à-brac Sénégal - Badji', 'Boutique de Thioro Badji à Kaffrine', 'entreprise', 'Kaffrine', 4.66, 23, 44, 'active'),
   ('d80e5b94-f5b3-4431-a12c-326f9fbc4503', '0d33fef0-3bcb-4070-956b-50ee9e52bfdf', 'Pressing Express - Dia', 'Boutique de Awa Dia à Grand Yoff', 'boutique', 'Grand Yoff', 2.96, 43, 158, 'active');
 
-INSERT INTO "Product" (id, "shopId", "ownerId", name, description, category, price, stock, status) VALUES
+INSERT INTO "Product" (id, shop_id, owner_id, name, description, category, price, stock, status) VALUES
   ('71b1a72c-b8a8-4c6e-aae5-5b429f7c96f2', 'd7f38aa6-4e2f-4996-a651-e016bfa96ac8', '29df523b-2e14-401f-8712-2d630341a645', 'Pendentif or', 'Pendentif or de qualité', 'or', 163493, 71, 'available'),
   ('360aced5-9cd2-4fec-9194-2b144d932663', 'd7f38aa6-4e2f-4996-a651-e016bfa96ac8', '29df523b-2e14-401f-8712-2d630341a645', 'Parfum Chanel N5', 'Parfum Chanel N5 de qualité', 'luxe', 84759, 8, 'available'),
   ('3b481871-0433-4af1-837d-f5c8fd66db43', 'd7f38aa6-4e2f-4996-a651-e016bfa96ac8', '29df523b-2e14-401f-8712-2d630341a645', 'Dacia Logan', 'Dacia Logan de qualité', 'vehicule', 7529663, 3, 'available'),
@@ -1703,7 +1703,7 @@ INSERT INTO "Product" (id, "shopId", "ownerId", name, description, category, pri
   ('0e6a7cb6-b36c-4636-b247-e587c1bc6acb', 'd80e5b94-f5b3-4431-a12c-326f9fbc4503', '0d33fef0-3bcb-4070-956b-50ee9e52bfdf', 'Bracelet or 18k', 'Bracelet or 18k de qualité', 'or', 210866, 76, 'available'),
   ('be09487c-ec72-44a0-a68d-4400cea78598', 'd80e5b94-f5b3-4431-a12c-326f9fbc4503', '0d33fef0-3bcb-4070-956b-50ee9e52bfdf', 'Parpaing 1000', 'Parpaing 1000 de qualité', 'materiel', 141308, 88, 'available');
 
-INSERT INTO "Service" (id, "shopId", "ownerId", name, description, category, price, availability) VALUES
+INSERT INTO "Service" (id, shop_id, owner_id, name, description, category, price, availability) VALUES
   ('d73580d0-0f14-4652-8f76-e9f2cf8b72e2', 'd7f38aa6-4e2f-4996-a651-e016bfa96ac8', '29df523b-2e14-401f-8712-2d630341a645', 'Déménagement local', 'Service professionnel Déménagement local', 'transport', 73506, 'available'),
   ('0c5073e2-f396-4a70-997e-88882c5cbf62', 'd7f38aa6-4e2f-4996-a651-e016bfa96ac8', '29df523b-2e14-401f-8712-2d630341a645', 'Garde malade', 'Service professionnel Garde malade', 'main_d_oeuvre', 12382, 'available'),
   ('9ee37e35-934e-460d-8f1f-0045be89b2b9', 'd7f38aa6-4e2f-4996-a651-e016bfa96ac8', '29df523b-2e14-401f-8712-2d630341a645', 'Course en ville', 'Service professionnel Course en ville', 'transport', 2267, 'available'),
@@ -2234,7 +2234,7 @@ INSERT INTO "Service" (id, "shopId", "ownerId", name, description, category, pri
 -- PRÊTS
 -- ============================================================
 
-INSERT INTO "Loan" (id, "userId", amount, interest_rate, total_due, remaining, monthly_payment, months_remaining, status, auto_approved, admin_approved) VALUES
+INSERT INTO "Loan" (id, user_id, amount, interest_rate, total_due, remaining, monthly_payment, months_remaining, status, auto_approved, admin_approved) VALUES
   ('23db376f-eaec-4a5b-a2cc-03300543e06b', 'f8dfbb5b-47c5-4bb6-a56a-c96a7601a1e7', 3693957, 4.95, 3876808, 0, 168557, 0, 'paid', false, false),
   ('35f8fd77-441b-42ab-a5dc-480e9afc2bd3', 'ce6c5855-7f94-484e-bbbd-df54d77edb1a', 2284913, 4.07, 2377909, 2274219, 108087, 3, 'active', true, NULL),
   ('bdddd5ac-21a5-4256-9840-8c4e94e5f122', '14827e0a-1db4-4893-a168-9ff35f52aeb8', 1951987, 2.94, 2009375, 1186927, 401875, 2, 'active', true, NULL),
@@ -2360,7 +2360,7 @@ INSERT INTO "Loan" (id, "userId", amount, interest_rate, total_due, remaining, m
 -- ACTIFS (PATRIMOINE)
 -- ============================================================
 
-INSERT INTO "Asset" (id, "userId", name, category, description, purchase_price, current_value, details, status) VALUES
+INSERT INTO "Asset" (id, user_id, name, category, description, purchase_price, current_value, details, status) VALUES
   ('ef2cc5c0-a184-4cae-be92-aa0f7664623e', '29df523b-2e14-401f-8712-2d630341a645', 'Lingot or 10g', 'or', 'Lingot or 10g - patrimoine', 376257, 345541, '{"grammes":5,"carat":24}', 'owned'),
   ('95efa88c-fb60-4b44-9fa6-4821f323aa38', '9b9226b4-c401-4aa5-8297-d693fb8ad61d', 'Villa Almadies', 'immobilier', 'Villa Almadies - patrimoine', 73061841, 76184188, '{"superficie":"413m2","pieces":3}', 'owned'),
   ('1faf0830-22a9-4eb9-9915-0a5481fa4256', 'e2c12fee-706f-41d2-9f12-b638f50cc2a5', 'Bracelet or 18k', 'or', 'Bracelet or 18k - patrimoine', 233466, 187233, '{"grammes":100,"carat":22}', 'owned'),
@@ -2960,7 +2960,7 @@ INSERT INTO "Asset" (id, "userId", name, category, description, purchase_price, 
 -- FEED D'ACTUALITÉS
 -- ============================================================
 
-INSERT INTO "FeedPost" (id, "userId", type, title, description, likes, comments) VALUES
+INSERT INTO "FeedPost" (id, user_id, type, title, description, likes, comments) VALUES
   ('f163ca6f-55e1-475f-9300-49b2547d309d', '6b0005e8-1747-42d2-a1d8-11057a1c9be6', 'vente', 'Siga Traoré vend un de ses biens au meilleur prix', 'Bien vendu avec plus-value.', 35, 18),
   ('d3502db3-936f-47d0-a1cc-857568accf24', 'b84a1be9-95eb-425d-9f4b-5cedd40d9b27', 'inscription', 'Issa Daff a rejoint Sama Économie !', 'Un nouvel entrepreneur rejoint la communauté !', 19, 14),
   ('3efe25be-0141-4321-a576-258e20123560', '4e3107d1-387d-4d3e-99a4-91b1dcde9764', 'pret', 'Daouda Dembélé a obtenu un prêt pour son projet', 'Prêt approuvé pour une nouvelle activité.', 50, 3),
@@ -3046,7 +3046,7 @@ INSERT INTO "FeedPost" (id, "userId", type, title, description, likes, comments)
 -- DEMANDES
 -- ============================================================
 
-INSERT INTO "Demand" (id, "userId", title, description, category, budget, status, responses_count) VALUES
+INSERT INTO "Demand" (id, user_id, title, description, category, budget, status, responses_count) VALUES
   ('4698117b-bb05-45a0-a953-ad33186319e1', 'a1266c8b-7693-41f9-b096-50a774663dc0', 'Besoin de service de déménagement', 'Je recherche ce service/produit. Contactez-moi si intéressé.', 'produit', 3391346, 'in_progress', 6),
   ('e7eb96f2-9efc-43ae-a731-7c39aa83ef4a', '6dcf14aa-d142-415e-b75b-dfe2c5b1cf65', 'Recherche bailleur pour local commercial', 'Je recherche ce service/produit. Contactez-moi si intéressé.', 'service', 3484948, 'closed', 4),
   ('40696a45-5dda-49f9-97e4-2dc4eaf3d475', '512c2c86-bb77-4e17-9eea-2a4406caf37f', 'Cherche électricien pour installation solaire', 'Je recherche ce service/produit. Contactez-moi si intéressé.', 'partenariat', 887853, 'open', 9),
@@ -3102,7 +3102,7 @@ INSERT INTO "Demand" (id, "userId", title, description, category, budget, status
 -- PROPOSITIONS
 -- ============================================================
 
-INSERT INTO "Proposal" (id, "demandId", "fromUserId", price, message, status) VALUES
+INSERT INTO "Proposal" (id, demand_id, from_user_id, price, message, status) VALUES
   ('e0a88fe3-2d30-40b9-96e4-b35c63805d02', '4698117b-bb05-45a0-a953-ad33186319e1', 'b69c4f9b-4181-4e78-ba58-62dc542fc349', 1541741, 'Bonjour, je propose ce service à ce prix. Contactez-moi.', 'rejected'),
   ('5d61b67a-80c2-4d47-81f1-15887a33d9ff', 'e7eb96f2-9efc-43ae-a731-7c39aa83ef4a', '425d7813-d7f5-4792-b687-cbc5cc6b9785', 2384221, 'Bonjour, je propose ce service à ce prix. Contactez-moi.', 'pending'),
   ('9e46400d-2436-40e9-abb7-0d5dac24a8b2', 'e7eb96f2-9efc-43ae-a731-7c39aa83ef4a', 'f48eb79f-49d8-45f1-acd6-bcbf43273a96', 183022, 'Bonjour, je propose ce service à ce prix. Contactez-moi.', 'rejected'),
@@ -3185,7 +3185,7 @@ INSERT INTO "Proposal" (id, "demandId", "fromUserId", price, message, status) VA
 -- COMMENTAIRES
 -- ============================================================
 
-INSERT INTO "FeedComment" (id, "postId", "userId", content) VALUES
+INSERT INTO "FeedComment" (id, post_id, user_id, content) VALUES
   ('2990ba34-58f3-4de3-8ae9-7d31f438b75d', '5eb8964c-b533-4010-83bd-9896852b8d3d', '0da456c7-b970-4363-a206-474f1df4770c', 'Tu devrais aller voir sur le marché.'),
   ('fb6377c4-b292-46f5-957a-caebeff05e1c', 'd2968574-cd4b-40d7-88f4-b5b68328d876', '9c3168bb-10ab-4472-b6b4-c16a372e9bbd', 'Trop bien ! Continue comme ça !'),
   ('fda3e5e7-cfcf-4c21-b07f-bc0a8237b6d3', '2a6ad5ca-2ad8-4b1e-9257-4ead718d58cc', '3fe2b9d5-4d37-48ca-b86e-870bce2e35dd', 'Tu devrais aller voir sur le marché.'),
@@ -3251,7 +3251,7 @@ INSERT INTO "FeedComment" (id, "postId", "userId", content) VALUES
 -- AVIS
 -- ============================================================
 
-INSERT INTO "Review" (id, "fromUserId", "toUserId", rating, comment) VALUES
+INSERT INTO "Review" (id, from_user_id, to_user_id, rating, comment) VALUES
   ('3f37417b-46e4-4115-9a6c-83b0ab3e1c9e', '830df95e-b1f3-47a6-8255-17dc24c1446e', '1b198b58-ea41-46c5-9353-6c94e463aff8', 5, 'Un peu cher mais la qualité est là.'),
   ('483c8654-13b5-4fee-a053-c751641fca8c', 'a528d59b-5dff-449c-ad3b-82b0e589134e', '223155fc-9c54-4dc1-a10d-1473352535c3', 4, 'Un vrai homme d''affaires !'),
   ('d846e31a-aee4-4d22-bdb7-514d42477c32', '2ddc8fa0-845b-4446-bf51-d4ce415b54fd', '0337c9e1-c4e4-4b3d-9d8c-e88e60068cb0', 2, 'Je recommande vivement !'),
@@ -3337,7 +3337,7 @@ INSERT INTO "Review" (id, "fromUserId", "toUserId", rating, comment) VALUES
 -- TRANSACTIONS
 -- ============================================================
 
-INSERT INTO "Transaction" (id, "fromUserId", "toUserId", amount, type, description) VALUES
+INSERT INTO "Transaction" (id, from_user_id, to_user_id, amount, type, description) VALUES
   ('8cef9c3e-1d75-47d8-a807-521932f6d5d9', 'f9ea132f-382d-465a-863a-8ab6fecfe8cb', '486a66c7-53ed-4546-98b0-f846ca48395b', 12384, 'don', 'Don entre joueurs'),
   ('f8e53a5e-919a-4fb8-b52f-20ad24bdfdf2', 'f9ea132f-382d-465a-863a-8ab6fecfe8cb', '9576bf10-b926-4493-8960-f4ba57442320', 493208, 'vente', 'Vente de bien'),
   ('9c044a3b-1638-468a-814e-510d7cbefef4', '5b404a03-2cd5-42e4-a430-c51da9fef8a3', '5b404a03-2cd5-42e4-a430-c51da9fef8a3', 3576850, 'achat', 'Achat sur le marché'),
