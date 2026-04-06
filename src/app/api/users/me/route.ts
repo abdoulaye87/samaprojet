@@ -1,28 +1,26 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { supabase } from '@/lib/supabase-server'
+import { supabaseAdmin } from '@/lib/supabase-server'
 import { db } from '@/lib/db'
-
-async function authenticate(req: NextRequest) {
-  const authHeader = req.headers.get('Authorization')
-  if (!authHeader) return null
-
-  const token = authHeader.replace('Bearer ', '')
-  const { data, error } = await supabase.auth.getUser(token)
-
-  if (error || !data.user) return null
-  return data.user
-}
 
 export async function GET(req: NextRequest) {
   try {
-    const user = await authenticate(req)
-    if (!user) {
+    const authHeader = req.headers.get('Authorization')
+    if (!authHeader) {
       return NextResponse.json({ error: 'Non autorisé' }, { status: 401 })
+    }
+
+    const token = authHeader.replace('Bearer ', '')
+
+    // Use ADMIN client to verify token
+    const { data, error } = await supabaseAdmin.auth.getUser(token)
+
+    if (error || !data.user) {
+      return NextResponse.json({ error: 'Token invalide' }, { status: 401 })
     }
 
     // Get or create user in Prisma
     let profile = await db.user.findUnique({
-      where: { id: user.id },
+      where: { id: data.user.id },
       include: {
         ownedBusinesses: true,
         businessesSent: {
@@ -45,12 +43,12 @@ export async function GET(req: NextRequest) {
     })
 
     if (!profile) {
-      const name = user.user_metadata?.name || user.email?.split('@')[0] || 'Utilisateur'
+      const name = data.user.user_metadata?.name || data.user.email?.split('@')[0] || 'Utilisateur'
       profile = await db.user.create({
         data: {
-          id: user.id,
+          id: data.user.id,
           name,
-          email: user.email,
+          email: data.user.email,
           cash: 5000,
           type: 'player',
         },

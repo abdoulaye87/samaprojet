@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server'
-import { supabase } from '@/lib/supabase-server'
+import { supabaseAdmin } from '@/lib/supabase-server'
 import { db } from '@/lib/db'
 
 // GET /api/businesses — List all businesses
@@ -11,7 +11,7 @@ export async function GET(req: Request) {
     }
 
     const token = authHeader.replace('Bearer ', '')
-    const { data, error } = await supabase.auth.getUser(token)
+    const { data, error } = await supabaseAdmin.auth.getUser(token)
 
     if (error || !data.user) {
       return NextResponse.json({ error: 'Non autorisé' }, { status: 401 })

@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { supabase } from '@/lib/supabase-server'
+import { supabaseAdmin } from '@/lib/supabase-server'
 import { db } from '@/lib/db'
 
 async function authenticate(req: NextRequest) {
@@ -7,7 +7,7 @@ async function authenticate(req: NextRequest) {
   if (!authHeader) return null
 
   const token = authHeader.replace('Bearer ', '')
-  const { data, error } = await supabase.auth.getUser(token)
+  const { data, error } = await supabaseAdmin.auth.getUser(token)
 
   if (error || !data.user) return null
   return data.user

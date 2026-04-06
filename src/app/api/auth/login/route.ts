@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { supabase } from '@/lib/supabase-server'
+import { supabaseAuth, supabaseAdmin } from '@/lib/supabase-server'
 
 export async function POST(req: NextRequest) {
   try {
@@ -12,7 +12,8 @@ export async function POST(req: NextRequest) {
       )
     }
 
-    const { data, error } = await supabase.auth.signInWithPassword({
+    // Use ANON client for user auth (not service role)
+    const { data, error } = await supabaseAuth.auth.signInWithPassword({
       email,
       password,
     })
@@ -24,27 +25,15 @@ export async function POST(req: NextRequest) {
       )
     }
 
-    // Get user profile from Prisma
+    // Get user profile from Prisma (with admin client)
     const { db } = await import('@/lib/db')
-    const user = await db.user.findUnique({
+    let user = await db.user.findUnique({
       where: { id: data.user.id },
-      include: {
-        ownedBusinesses: true,
-        businessesSent: {
-          orderBy: { createdAt: 'desc' },
-          take: 10,
-        },
-        businessesReceived: {
-          orderBy: { createdAt: 'desc' },
-          take: 10,
-        },
-      },
     })
 
-    // If user doesn't exist in Prisma, create them
     if (!user) {
       const name = data.user.user_metadata?.name || email.split('@')[0]
-      await db.user.create({
+      user = await db.user.create({
         data: {
           id: data.user.id,
           name,
@@ -59,9 +48,10 @@ export async function POST(req: NextRequest) {
       message: 'Connexion réussie',
       session: data.session,
       user: {
-        id: data.user.id,
-        email: data.user.email,
-        name: data.user.user_metadata?.name || email.split('@')[0],
+        id: user.id,
+        email: user.email,
+        name: user.name,
+        type: user.type,
       },
     })
   } catch (error) {

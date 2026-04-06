@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { supabase } from '@/lib/supabase-server'
+import { supabaseAuth } from '@/lib/supabase-server'
 import { db } from '@/lib/db'
 
 export async function POST(req: NextRequest) {
@@ -20,8 +20,8 @@ export async function POST(req: NextRequest) {
       )
     }
 
-    // Create user in Supabase Auth
-    const { data: authData, error: authError } = await supabase.auth.signUp({
+    // Use ANON client for user auth (not service role)
+    const { data: authData, error: authError } = await supabaseAuth.auth.signUp({
       email,
       password,
       options: {
@@ -36,7 +36,7 @@ export async function POST(req: NextRequest) {
       )
     }
 
-    // Also create in Prisma User table (in case trigger doesn't fire or for local dev)
+    // Create user in Prisma (in case trigger doesn't fire)
     if (authData.user) {
       await db.user.upsert({
         where: { id: authData.user.id },
@@ -66,7 +66,7 @@ export async function POST(req: NextRequest) {
   } catch (error) {
     console.error('Register error:', error)
     return NextResponse.json(
-      { error: 'Erreur lors de l\'inscription' },
+      { error: "Erreur lors de l'inscription" },
       { status: 500 }
     )
   }

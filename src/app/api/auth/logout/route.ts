@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { supabase } from '@/lib/supabase-server'
+import { supabaseAuth } from '@/lib/supabase-server'
 
 export async function POST(req: NextRequest) {
   try {
@@ -14,7 +14,7 @@ export async function POST(req: NextRequest) {
     const token = authHeader.replace('Bearer ', '')
 
     // Verify the token and get the session
-    const { data, error } = await supabase.auth.getUser(token)
+    const { data, error } = await supabaseAuth.auth.getUser(token)
 
     if (error || !data.user) {
       return NextResponse.json(
