@@ -60,7 +60,7 @@ CREATE TABLE IF NOT EXISTS market (
 -- TABLE: economy
 -- ============================================
 CREATE TABLE IF NOT EXISTS economy (
-  id              SERIAL PRIMARY KEY DEFAULT 1 CHECK (id = 1),
+  id              INTEGER PRIMARY KEY DEFAULT 1 CHECK (id = 1),
   periode         INTEGER NOT NULL DEFAULT 1,
   inflation_cumul NUMERIC(10, 4) NOT NULL DEFAULT 0.00,
   inflation_rate  NUMERIC(5, 4) NOT NULL DEFAULT 0.02,
