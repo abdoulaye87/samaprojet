@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { supabase } from '@/lib/supabase-server'
+import { supabase, confirmUserEmail } from '@/lib/supabase-server'
 
 export async function POST(req: NextRequest) {
   try {
@@ -43,6 +43,11 @@ export async function POST(req: NextRequest) {
       )
     }
 
+    // Auto-confirmer l'email immédiatement via Admin API
+    if (authData.user.id) {
+      await confirmUserEmail(authData.user.id)
+    }
+
     // Créer le profil dans Supabase
     await supabase.from('"User"').upsert(
       {
@@ -55,29 +60,34 @@ export async function POST(req: NextRequest) {
       { onConflict: 'id' }
     )
 
-    // Si session disponible = confirmation email désactivée → connexion auto
-    if (authData.session) {
+    // Après auto-confirmation, tenter de connecter l'utilisateur directement
+    const { data: loginData } = await supabase.auth.signInWithPassword({
+      email,
+      password,
+    })
+
+    if (loginData?.session && loginData?.user) {
       return NextResponse.json({
         success: true,
         session: {
-          access_token: authData.session.access_token,
-          refresh_token: authData.session.refresh_token,
-          expires_in: authData.session.expires_in,
+          access_token: loginData.session.access_token,
+          refresh_token: loginData.session.refresh_token,
+          expires_in: loginData.session.expires_in,
         },
         user: {
-          id: authData.user.id,
-          email: authData.user.email,
+          id: loginData.user.id,
+          email: loginData.user.email,
           name,
           type: 'player',
         },
       })
     }
 
-    // Sinon = confirmation email activée → dire à l'utilisateur de se connecter
+    // Fallback: inscription réussie mais connexion auto impossible
     return NextResponse.json({
       success: true,
-      needConfirmation: true,
-      message: 'Compte créé ! Vérifiez votre email puis connectez-vous.',
+      needConfirmation: false,
+      message: 'Compte créé avec succès ! Connectez-vous maintenant.',
       user: {
         id: authData.user.id,
         email: authData.user.email,
