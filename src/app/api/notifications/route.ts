@@ -10,16 +10,15 @@ export async function GET(req: NextRequest) {
     const { data: { user }, error } = await supabase.auth.getUser(token)
     if (error || !user) return NextResponse.json({ error: 'Token invalide' }, { status: 401 })
 
-    const { data: profile } = await supabase.from('User').select('*').eq('id', user.id).single()
-    if (!profile) {
-      const name = user.user_metadata?.name || user.email?.split('@')[0] || 'Utilisateur'
-      await supabase.from('User').insert({ id: user.id, name, email: user.email, cash: 0, type: 'player' })
-      return NextResponse.json({ user: { id: user.id, name, email: user.email, cash: 0, type: 'player' } })
-    }
+    const { data: notifications } = await supabase
+      .from('Notification')
+      .select('*')
+      .eq('userId', user.id)
+      .order('createdAt', { ascending: false })
+      .limit(30)
 
-    return NextResponse.json({ user: profile })
+    return NextResponse.json({ notifications: notifications || [] })
   } catch (error) {
-    console.error('Get me error:', error)
     return NextResponse.json({ error: 'Erreur serveur' }, { status: 500 })
   }
 }

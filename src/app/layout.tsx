@@ -14,8 +14,8 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "Économie GLM5 — Simulation",
-  description: "Dashboard de simulation économique",
+  title: "Sama Économie — Devenez l'entrepreneur #1 du Sénégal",
+  description: "Simulation économique gamifiée. Gérez votre business, empruntez, investissez et dominez le marché sénégalais !",
   icons: {
     icon: "https://z-cdn.chatglm.cn/z-ai/static/logo.svg",
   },
